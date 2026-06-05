@@ -12,25 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [linux-x64, linux-arm64, android-arm64]
+        target: [linux-x64, android-arm64]
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Install ARM64 Toolchain
-      if: matrix.target == 'linux-arm64'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
-
     - name: Build Linux x64
       if: matrix.target == 'linux-x64'
       run: make clean && make -j$(nproc)
-
-    - name: Build Linux arm64
-      if: matrix.target == 'linux-arm64'
-      run: make clean && make CC=aarch64-linux-gnu-gcc -j$(nproc)
 
     - name: Build Android arm64
       if: matrix.target == 'android-arm64'
@@ -41,8 +31,42 @@ jobs:
         echo "Using Android NDK Clang: $CC"
         make clean && make CC=$CC -j$(nproc)
 
+    - name: Create Tarball
+      run: |
+        mv cbench cbench-${{ matrix.target }}
+        tar -czvf cbench-${{ matrix.target }}.tar.gz cbench-${{ matrix.target }}
+
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: cbench-${{ matrix.target }}
-        path: cbench
+        path: cbench-${{ matrix.target }}.tar.gz
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create Release Tag
+      id: tag
+      run: |
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        echo "tag=v1-${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: Release ${{ steps.tag.outputs.tag }}
+        files: artifacts/**/*.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
