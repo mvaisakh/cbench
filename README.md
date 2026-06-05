@@ -91,6 +91,7 @@ adb shell
 su
 cd /data/local/tmp/
 chmod +x cbench
+```
 
 # REQUIRED:
 ## Telemetry & OS Insights
@@ -105,6 +106,7 @@ Every benchmark is wrapped in a highly precise telemetry envelope that passively
 
 ---
 
+```
 # Expose kernel memory addresses to the profiler
 echo 0 > /proc/sys/kernel/kptr_restrict
 
