@@ -15,7 +15,6 @@
 #include "topology.h"
 #include "energy.h"
 
-#define IO_FILE_SIZE_PER_THREAD (64 * 1024 * 1024) /* 64 MB per thread */
 #define IO_BLOCK_SIZE (64 * 1024)                  /* 64 KB */
 
 struct io_worker_args {
@@ -29,9 +28,8 @@ static void *io_worker(void *arg)
     struct io_worker_args *args = (struct io_worker_args *)arg;
     int fd;
     char *buf;
-    uint64_t start, end;
+    uint64_t start, end_time;
     double total_ns;
-    size_t i;
     char test_file[64];
 
     topology_bind_thread(args->thread_id);
@@ -43,34 +41,41 @@ static void *io_worker(void *arg)
     memset(buf, 0xBB, IO_BLOCK_SIZE);
 
     /* 1. Sequential Write (Buffered) */
+    uint64_t write_bytes = 0;
     fd = open(test_file, O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (fd >= 0) {
         start = get_time_ns();
-        for (i = 0; i < IO_FILE_SIZE_PER_THREAD; i += IO_BLOCK_SIZE) {
+        end_time = start + ((uint64_t)benchmark_duration_sec * 1000000000ULL);
+        while (get_time_ns() < end_time) {
             if (write(fd, buf, IO_BLOCK_SIZE) != IO_BLOCK_SIZE) break;
+            write_bytes += IO_BLOCK_SIZE;
         }
         fsync(fd);
-        end = get_time_ns();
+        total_ns = (double)(get_time_ns() - start);
         close(fd);
 
-        total_ns = (double)(end - start);
-        args->write_bw = (IO_FILE_SIZE_PER_THREAD / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
+        args->write_bw = (write_bytes / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
     } else {
         args->write_bw = 0;
     }
 
     /* 2. Sequential Read (Cached) */
+    uint64_t read_bytes = 0;
     fd = open(test_file, O_RDONLY);
     if (fd >= 0) {
         start = get_time_ns();
-        for (i = 0; i < IO_FILE_SIZE_PER_THREAD; i += IO_BLOCK_SIZE) {
-            if (read(fd, buf, IO_BLOCK_SIZE) != IO_BLOCK_SIZE) break;
+        end_time = start + ((uint64_t)benchmark_duration_sec * 1000000000ULL);
+        while (get_time_ns() < end_time) {
+            if (read(fd, buf, IO_BLOCK_SIZE) <= 0) {
+                lseek(fd, 0, SEEK_SET); /* loop back if EOF */
+            } else {
+                read_bytes += IO_BLOCK_SIZE;
+            }
         }
-        end = get_time_ns();
+        total_ns = (double)(get_time_ns() - start);
         close(fd);
 
-        total_ns = (double)(end - start);
-        args->read_bw = (IO_FILE_SIZE_PER_THREAD / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
+        args->read_bw = (read_bytes / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
     } else {
         args->read_bw = 0;
     }
@@ -88,7 +93,7 @@ int run_io_benchmark(void)
     int i;
     double total_write_bw = 0.0, total_read_bw = 0.0;
 
-    pr_info("Running I/O Subsystem Benchmarks across %d thread(s)...\n", num_threads);
+    pr_info("Running I/O Subsystem Benchmarks across %d thread(s) for %d seconds...\n", num_threads, benchmark_duration_sec);
 
     threads = malloc(sizeof(pthread_t) * num_threads);
     args = malloc(sizeof(struct io_worker_args) * num_threads);
@@ -119,7 +124,7 @@ int run_io_benchmark(void)
     report_add_metric("io", "agg_seq_read_cached_bw", total_read_bw, "MB/s");
 
     if (joules > 0.0) {
-        double total_mb_io = (IO_FILE_SIZE_PER_THREAD * 2.0 * num_threads) / (1024.0 * 1024.0);
+        double total_mb_io = (total_write_bw + total_read_bw) * benchmark_duration_sec;
         pr_info("Energy consumed: %.4f Joules\n", joules);
         pr_info("Efficiency: %.2f MB_io/Joule\n", total_mb_io / joules);
         report_add_metric("io", "energy_joules", joules, "J");

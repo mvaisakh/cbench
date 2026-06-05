@@ -13,17 +13,21 @@
 #include "topology.h"
 #include "energy.h"
 
-#define PING_PONG_ITERS_PER_THREAD 50000
+struct sched_worker_args {
+    int thread_id;
+    uint64_t iters;
+};
 
 static void *sched_worker(void *arg)
 {
-    int thread_id = *(int *)arg;
+    struct sched_worker_args *args = (struct sched_worker_args *)arg;
     int p1[2], p2[2];
     pid_t pid;
     char msg = 'c';
     int i;
 
-    topology_bind_thread(thread_id);
+    args->iters = 0;
+    topology_bind_thread(args->thread_id);
 
     if (pipe(p1) == -1 || pipe(p2) == -1) {
         return NULL;
@@ -36,17 +40,24 @@ static void *sched_worker(void *arg)
 
     if (pid == 0) {
         /* Child */
-        topology_bind_thread(thread_id); /* Bind child to same CPU/cluster */
-        for (i = 0; i < PING_PONG_ITERS_PER_THREAD; i++) {
-            if (read(p1[0], &msg, 1) != 1) exit(1);
-            if (write(p2[1], &msg, 1) != 1) exit(1);
+        topology_bind_thread(args->thread_id);
+        uint64_t end_time = get_time_ns() + ((uint64_t)benchmark_duration_sec * 1000000000ULL);
+        while (get_time_ns() < end_time) {
+            for (i = 0; i < 1000; i++) {
+                if (read(p1[0], &msg, 1) != 1) exit(1);
+                if (write(p2[1], &msg, 1) != 1) exit(1);
+            }
         }
         exit(0);
     } else {
         /* Parent */
-        for (i = 0; i < PING_PONG_ITERS_PER_THREAD; i++) {
-            if (write(p1[1], &msg, 1) != 1) break;
-            if (read(p2[0], &msg, 1) != 1) break;
+        uint64_t end_time = get_time_ns() + ((uint64_t)benchmark_duration_sec * 1000000000ULL);
+        while (get_time_ns() < end_time) {
+            for (i = 0; i < 1000; i++) {
+                if (write(p1[1], &msg, 1) != 1) break;
+                if (read(p2[0], &msg, 1) != 1) break;
+            }
+            args->iters += 1000;
         }
         wait(NULL);
     }
@@ -60,33 +71,34 @@ static void *sched_worker(void *arg)
 int run_sched_benchmark(void)
 {
     pthread_t *threads;
-    int *tids;
+    struct sched_worker_args *args;
     uint64_t start, end;
     int i;
 
-    pr_info("Running Scheduler Context Switch Benchmark (Pipe Ping-Pong) across %d thread(s)...\n", num_threads);
+    pr_info("Running Scheduler Context Switch Benchmark across %d thread(s) for %d seconds...\n", num_threads, benchmark_duration_sec);
 
     threads = malloc(sizeof(pthread_t) * num_threads);
-    tids = malloc(sizeof(int) * num_threads);
-    if (!threads || !tids) return -1;
+    args = malloc(sizeof(struct sched_worker_args) * num_threads);
+    if (!threads || !args) return -1;
 
     energy_start();
     start = get_time_ns();
 
     for (i = 0; i < num_threads; i++) {
-        tids[i] = i;
-        pthread_create(&threads[i], NULL, sched_worker, &tids[i]);
+        args[i].thread_id = i;
+        pthread_create(&threads[i], NULL, sched_worker, &args[i]);
     }
 
+    uint64_t total_iters = 0;
     for (i = 0; i < num_threads; i++) {
         pthread_join(threads[i], NULL);
+        total_iters += args[i].iters;
     }
 
     end = get_time_ns();
     energy_stop();
 
     uint64_t total_ns = end - start;
-    uint64_t total_iters = (uint64_t)PING_PONG_ITERS_PER_THREAD * num_threads;
     double throughput = (double)(total_iters * 2) / (total_ns / 1000000000.0); /* 2 switches per iter */
     double joules = energy_get_joules();
 
@@ -104,7 +116,7 @@ int run_sched_benchmark(void)
     }
 
     free(threads);
-    free(tids);
+    free(args);
 
     return 0;
 }

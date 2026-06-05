@@ -12,17 +12,26 @@
 #include "topology.h"
 #include "energy.h"
 
-#define ITERS_PER_THREAD 10000000
+struct syscall_worker_args {
+    int thread_id;
+    uint64_t iters;
+};
 
 static void *syscall_worker(void *arg)
 {
-    int thread_id = *(int *)arg;
+    struct syscall_worker_args *args = (struct syscall_worker_args *)arg;
     int i;
     
-    topology_bind_thread(thread_id);
+    args->iters = 0;
+    topology_bind_thread(args->thread_id);
 
-    for (i = 0; i < ITERS_PER_THREAD; i++) {
-        syscall(SYS_gettid);
+    uint64_t end_time = get_time_ns() + ((uint64_t)benchmark_duration_sec * 1000000000ULL);
+
+    while (get_time_ns() < end_time) {
+        for (i = 0; i < 10000; i++) {
+            syscall(SYS_gettid);
+        }
+        args->iters += 10000;
     }
     
     return NULL;
@@ -31,33 +40,34 @@ static void *syscall_worker(void *arg)
 int run_syscall_benchmark(void)
 {
     pthread_t *threads;
-    int *tids;
+    struct syscall_worker_args *args;
     uint64_t start, end;
     int i;
 
-    pr_info("Running Syscall Latency Benchmark (SYS_gettid) across %d thread(s)...\n", num_threads);
+    pr_info("Running Syscall Latency Benchmark (SYS_gettid) across %d thread(s) for %d seconds...\n", num_threads, benchmark_duration_sec);
 
     threads = malloc(sizeof(pthread_t) * num_threads);
-    tids = malloc(sizeof(int) * num_threads);
-    if (!threads || !tids) return -1;
+    args = malloc(sizeof(struct syscall_worker_args) * num_threads);
+    if (!threads || !args) return -1;
 
     energy_start();
     start = get_time_ns();
 
     for (i = 0; i < num_threads; i++) {
-        tids[i] = i;
-        pthread_create(&threads[i], NULL, syscall_worker, &tids[i]);
+        args[i].thread_id = i;
+        pthread_create(&threads[i], NULL, syscall_worker, &args[i]);
     }
 
+    uint64_t total_iters = 0;
     for (i = 0; i < num_threads; i++) {
         pthread_join(threads[i], NULL);
+        total_iters += args[i].iters;
     }
 
     end = get_time_ns();
     energy_stop();
 
     uint64_t total_ns = end - start;
-    uint64_t total_iters = (uint64_t)ITERS_PER_THREAD * num_threads;
     double throughput = (double)total_iters / (total_ns / 1000000000.0);
     double joules = energy_get_joules();
 
@@ -75,7 +85,7 @@ int run_syscall_benchmark(void)
     }
 
     free(threads);
-    free(tids);
+    free(args);
 
     return 0;
 }

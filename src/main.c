@@ -14,8 +14,11 @@
 #include "sysinfo.h"
 #include "topology.h"
 #include "energy.h"
+#include "profiler.h"
+#include "cpuidle.h"
 
 int num_threads = 0;
+int benchmark_duration_sec = 10;
 
 static void usage(const char *progname)
 {
@@ -28,6 +31,7 @@ static void usage(const char *progname)
     printf("  -m, --mem        Run Memory Subsystem benchmark\n");
     printf("  -i, --io         Run I/O Subsystem benchmark\n");
     printf("  -t, --threads N  Number of threads (default: all cores)\n");
+    printf("  -d, --duration S Duration in seconds per benchmark (default: 10)\n");
     printf("  -j, --json       Output results in JSON format at the end\n");
 }
 
@@ -49,11 +53,12 @@ int main(int argc, char **argv)
         {"mem",     no_argument, 0, 'm'},
         {"io",      no_argument, 0, 'i'},
         {"threads", required_argument, 0, 't'},
+        {"duration", required_argument, 0, 'd'},
         {"json",    no_argument, 0, 'j'},
         {0, 0, 0, 0}
     };
 
-    while ((opt = getopt_long(argc, argv, "hascmit:j", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hascmit:d:j", long_options, NULL)) != -1) {
         switch (opt) {
         case 'a':
             run_all = 1;
@@ -73,6 +78,9 @@ int main(int argc, char **argv)
         case 't':
             num_threads = atoi(optarg);
             break;
+        case 'd':
+            benchmark_duration_sec = atoi(optarg);
+            break;
         case 'j':
             json_out = 1;
             break;
@@ -88,30 +96,52 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    if (benchmark_duration_sec <= 0) {
+        benchmark_duration_sec = 10;
+    }
+
     report_init();
     collect_sysinfo();
     topology_init();
     energy_init();
+    profiler_init();
+    cpuidle_init();
 
     if (num_threads <= 0) {
         num_threads = system_topo.total_cpus;
     }
-    pr_info("Starting Cerium Benchmarking (cbench) with %d thread(s)...\n", num_threads);
+    pr_info("Starting Cerium Benchmarking (cbench) with %d thread(s), %d seconds per test...\n", num_threads, benchmark_duration_sec);
 
     if (run_all || run_syscall) {
+        profiler_start();
+        cpuidle_start();
         run_syscall_benchmark();
+        cpuidle_stop("syscall");
+        profiler_stop("syscall");
     }
     
     if (run_all || run_sched) {
+        profiler_start();
+        cpuidle_start();
         run_sched_benchmark();
+        cpuidle_stop("sched");
+        profiler_stop("sched");
     }
     
     if (run_all || run_mem) {
+        profiler_start();
+        cpuidle_start();
         run_mem_benchmark();
+        cpuidle_stop("mem");
+        profiler_stop("mem");
     }
     
     if (run_all || run_io) {
+        profiler_start();
+        cpuidle_start();
         run_io_benchmark();
+        cpuidle_stop("io");
+        profiler_stop("io");
     }
 
     pr_info("Run complete.\n");

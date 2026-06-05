@@ -11,5 +11,6 @@
 #define pr_warn(fmt, ...)  fprintf(stderr, "cbench: WARNING: " fmt, ##__VA_ARGS__)
 
 extern int num_threads;
+extern int benchmark_duration_sec;
 
 #endif /* _CBENCH_H */
