@@ -1,6 +1,15 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Project Cerium
 
+V ?= 0
+ifeq ($(V),0)
+  Q = @
+  ECHO = @echo
+else
+  Q =
+  ECHO = @true
+endif
+
 CC ?= gcc
 CFLAGS ?= -Wall -Wextra -O2 -static -pthread -I./include
 LDFLAGS ?= -pthread
@@ -19,13 +28,16 @@ TARGET := cbench
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(ECHO) "  LD      $@"
+	$(Q)$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(ECHO) "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+	$(Q)mkdir -p $(OBJ_DIR)
 
 clean:
-	rm -rf $(OBJ_DIR) $(TARGET)
+	$(ECHO) "  CLEAN   $(OBJ_DIR) $(TARGET)"
+	$(Q)rm -rf $(OBJ_DIR) $(TARGET)
