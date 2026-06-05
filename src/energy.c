@@ -51,7 +51,7 @@ void energy_init(void)
         NULL
     };
     for (int i=0; energy_paths[i]; i++) {
-        if (read_sysfs_uint64(energy_paths[i]) > 0) {
+        if (access(energy_paths[i], R_OK) == 0) {
             use_battery_energy = 1;
             snprintf(active_path, sizeof(active_path), "%s", energy_paths[i]);
             pr_info("Energy subsystem initialized: using Android battery energy (uWh)\n");
@@ -66,7 +66,7 @@ void energy_init(void)
         NULL
     };
     for (int i=0; charge_paths[i]; i++) {
-        if (read_sysfs_uint64(charge_paths[i]) > 0) {
+        if (access(charge_paths[i], R_OK) == 0) {
             use_battery_charge = 1;
             snprintf(active_path, sizeof(active_path), "%s", charge_paths[i]);
             pr_info("Energy subsystem initialized: using Android battery charge (uAh)\n");
@@ -81,7 +81,7 @@ void energy_init(void)
         NULL
     };
     for (int i=0; current_paths[i]; i++) {
-        if (read_sysfs_uint64(current_paths[i]) > 0) {
+        if (access(current_paths[i], R_OK) == 0) {
             use_battery_current = 1;
             snprintf(active_path, sizeof(active_path), "%s", current_paths[i]);
             pr_info("Energy subsystem initialized: using Android instantaneous current (uA)\n");
