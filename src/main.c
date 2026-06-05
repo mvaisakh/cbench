@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Project Cerium
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
@@ -9,6 +12,10 @@
 #include "bench_io.h"
 #include "report.h"
 #include "sysinfo.h"
+#include "topology.h"
+#include "energy.h"
+
+int num_threads = 0;
 
 static void usage(const char *progname)
 {
@@ -20,6 +27,7 @@ static void usage(const char *progname)
     printf("  -c, --sched      Run Scheduler Context Switch benchmark\n");
     printf("  -m, --mem        Run Memory Subsystem benchmark\n");
     printf("  -i, --io         Run I/O Subsystem benchmark\n");
+    printf("  -t, --threads N  Number of threads (default: all cores)\n");
     printf("  -j, --json       Output results in JSON format at the end\n");
 }
 
@@ -40,11 +48,12 @@ int main(int argc, char **argv)
         {"sched",   no_argument, 0, 'c'},
         {"mem",     no_argument, 0, 'm'},
         {"io",      no_argument, 0, 'i'},
+        {"threads", required_argument, 0, 't'},
         {"json",    no_argument, 0, 'j'},
         {0, 0, 0, 0}
     };
 
-    while ((opt = getopt_long(argc, argv, "hascmij", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hascmit:j", long_options, NULL)) != -1) {
         switch (opt) {
         case 'a':
             run_all = 1;
@@ -60,6 +69,9 @@ int main(int argc, char **argv)
             break;
         case 'i':
             run_io = 1;
+            break;
+        case 't':
+            num_threads = atoi(optarg);
             break;
         case 'j':
             json_out = 1;
@@ -78,8 +90,13 @@ int main(int argc, char **argv)
 
     report_init();
     collect_sysinfo();
+    topology_init();
+    energy_init();
 
-    pr_info("Starting Cerium Benchmarking (cbench)...\n");
+    if (num_threads <= 0) {
+        num_threads = system_topo.total_cpus;
+    }
+    pr_info("Starting Cerium Benchmarking (cbench) with %d thread(s)...\n", num_threads);
 
     if (run_all || run_syscall) {
         run_syscall_benchmark();

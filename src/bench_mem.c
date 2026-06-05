@@ -1,71 +1,125 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Project Cerium
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <sys/mman.h>
 #include "cbench.h"
 #include "utils.h"
 #include "bench_mem.h"
 #include "report.h"
+#include "topology.h"
+#include "energy.h"
 
-#define MEM_SIZE (256 * 1024 * 1024) /* 256 MB */
+#define MEM_SIZE_PER_THREAD (128 * 1024 * 1024) /* 128 MB per thread */
 #define PAGE_SIZE 4096
 
-int run_mem_benchmark(void)
+struct mem_worker_args {
+    int thread_id;
+    double fault_ms;
+    double write_bw;
+    double copy_bw;
+};
+
+static void *mem_worker(void *arg)
 {
-    uint64_t start, end;
+    struct mem_worker_args *args = (struct mem_worker_args *)arg;
     void *mem1, *mem2;
     size_t i;
-    double total_ns, bw_mb_s;
+    uint64_t start, end;
+    double total_ns;
 
-    pr_info("Running Memory Subsystem Benchmarks...\n");
+    topology_bind_thread(args->thread_id);
 
-    /* 1. Page Fault / Anonymous Memory mapping */
+    /* 1. Page Faults */
     start = get_time_ns();
-    mem1 = mmap(NULL, MEM_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (mem1 == MAP_FAILED) {
-        pr_err("mmap failed\n");
-        return -1;
-    }
+    mem1 = mmap(NULL, MEM_SIZE_PER_THREAD, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem1 == MAP_FAILED) return NULL;
     
-    /* Touch each page to trigger page faults */
     volatile char *ptr = (volatile char *)mem1;
-    for (i = 0; i < MEM_SIZE; i += PAGE_SIZE) {
+    for (i = 0; i < MEM_SIZE_PER_THREAD; i += PAGE_SIZE) {
         ptr[i] = 1;
     }
     end = get_time_ns();
-    
     total_ns = (double)(end - start);
-    pr_info("Page Faults (Anonymous): %.2f ms to fault %u pages (256 MB)\n", total_ns / 1000000.0, MEM_SIZE / PAGE_SIZE);
-    report_add_metric("mem", "anon_page_fault", total_ns / 1000000.0, "ms");
+    args->fault_ms = total_ns / 1000000.0;
 
-    /* 2. Sequential Write Bandwidth */
+    /* 2. Sequential Write */
     start = get_time_ns();
-    memset(mem1, 0xAA, MEM_SIZE);
+    memset(mem1, 0xAA, MEM_SIZE_PER_THREAD);
     end = get_time_ns();
-
     total_ns = (double)(end - start);
-    bw_mb_s = (MEM_SIZE / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
-    pr_info("Sequential Write (memset): %.2f MB/s\n", bw_mb_s);
-    report_add_metric("mem", "seq_write_bw", bw_mb_s, "MB/s");
+    args->write_bw = (MEM_SIZE_PER_THREAD / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
 
-    /* 3. Sequential Copy Bandwidth */
-    mem2 = mmap(NULL, MEM_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    /* 3. Sequential Copy */
+    mem2 = mmap(NULL, MEM_SIZE_PER_THREAD, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mem2 != MAP_FAILED) {
-        /* Pre-fault the destination */
-        memset(mem2, 0, MEM_SIZE);
+        memset(mem2, 0, MEM_SIZE_PER_THREAD);
         
         start = get_time_ns();
-        memcpy(mem2, mem1, MEM_SIZE);
+        memcpy(mem2, mem1, MEM_SIZE_PER_THREAD);
         end = get_time_ns();
 
         total_ns = (double)(end - start);
-        bw_mb_s = (MEM_SIZE / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
-        pr_info("Memory Copy (memcpy): %.2f MB/s\n", bw_mb_s);
-        report_add_metric("mem", "memcpy_bw", bw_mb_s, "MB/s");
-        
-        munmap(mem2, MEM_SIZE);
+        args->copy_bw = (MEM_SIZE_PER_THREAD / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
+        munmap(mem2, MEM_SIZE_PER_THREAD);
     }
 
-    munmap(mem1, MEM_SIZE);
+    munmap(mem1, MEM_SIZE_PER_THREAD);
+    return NULL;
+}
+
+int run_mem_benchmark(void)
+{
+    pthread_t *threads;
+    struct mem_worker_args *args;
+    int i;
+    double total_write_bw = 0.0, total_copy_bw = 0.0;
+
+    pr_info("Running Memory Subsystem Benchmarks across %d thread(s)...\n", num_threads);
+
+    threads = malloc(sizeof(pthread_t) * num_threads);
+    args = malloc(sizeof(struct mem_worker_args) * num_threads);
+    if (!threads || !args) return -1;
+
+    energy_start();
+
+    for (i = 0; i < num_threads; i++) {
+        args[i].thread_id = i;
+        args[i].fault_ms = 0;
+        args[i].write_bw = 0;
+        args[i].copy_bw = 0;
+        pthread_create(&threads[i], NULL, mem_worker, &args[i]);
+    }
+
+    for (i = 0; i < num_threads; i++) {
+        pthread_join(threads[i], NULL);
+        total_write_bw += args[i].write_bw;
+        total_copy_bw += args[i].copy_bw;
+    }
+
+    energy_stop();
+    double joules = energy_get_joules();
+
+    pr_info("Total Aggregated Write Bandwidth: %.2f MB/s\n", total_write_bw);
+    pr_info("Total Aggregated Copy Bandwidth: %.2f MB/s\n", total_copy_bw);
+    
+    report_add_metric("mem", "agg_seq_write_bw", total_write_bw, "MB/s");
+    report_add_metric("mem", "agg_memcpy_bw", total_copy_bw, "MB/s");
+
+    if (joules > 0.0) {
+        /* Calculate efficiency: Megabytes copied per Joule */
+        double total_mb_copied = (MEM_SIZE_PER_THREAD * num_threads) / (1024.0 * 1024.0);
+        pr_info("Energy consumed: %.4f Joules\n", joules);
+        pr_info("Efficiency: %.2f MB_copied/Joule\n", total_mb_copied / joules);
+        report_add_metric("mem", "energy_joules", joules, "J");
+        report_add_metric("mem", "efficiency_mb_per_j", total_mb_copied / joules, "MB/J");
+    }
+
+    free(threads);
+    free(args);
+
     return 0;
 }

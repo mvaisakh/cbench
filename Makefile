@@ -1,6 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 Project Cerium
+
 CC ?= gcc
-CFLAGS ?= -Wall -Wextra -O2 -static -I./include
-LDFLAGS ?=
+CFLAGS ?= -Wall -Wextra -O2 -static -pthread -I./include
+LDFLAGS ?= -pthread
 
 SRC_DIR := src
 INC_DIR := include

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Project Cerium
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
