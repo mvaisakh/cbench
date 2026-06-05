@@ -98,30 +98,59 @@ int main(int argc, char **argv)
     pr_info("Starting Cerium Benchmarking (cbench) with %d thread(s), %d seconds per test...\n", num_threads, benchmark_duration_sec);
 
     if (run_syscall) {
+        pr_info("\n================================================================================\n");
         telemetry_start();
         run_syscall_benchmark();
         telemetry_stop("syscall");
     }
     if (run_sched) {
+        pr_info("\n================================================================================\n");
         telemetry_start();
         run_sched_benchmark();
         telemetry_stop("sched");
     }
     if (run_mem) {
+        pr_info("\n================================================================================\n");
         telemetry_start();
         run_mem_benchmark();
         telemetry_stop("mem");
     }
     if (run_io) {
+        pr_info("\n================================================================================\n");
         telemetry_start();
         run_io_benchmark();
         telemetry_stop("io");
     }
-    if (run_rng) run_rng_benchmark(num_threads, benchmark_duration_sec);
-    if (run_net) run_net_benchmark(num_threads, benchmark_duration_sec);
-    if (run_futex) run_futex_benchmark(num_threads, benchmark_duration_sec);
-    if (run_crypto) run_crypto_benchmark(num_threads, benchmark_duration_sec);
-    if (run_zero) run_zero_benchmark(num_threads, benchmark_duration_sec);
+    if (run_rng) {
+        pr_info("\n================================================================================\n");
+        telemetry_start();
+        run_rng_benchmark(num_threads, benchmark_duration_sec);
+        telemetry_stop("rng");
+    }
+    if (run_net) {
+        pr_info("\n================================================================================\n");
+        telemetry_start();
+        run_net_benchmark(num_threads, benchmark_duration_sec);
+        telemetry_stop("net");
+    }
+    if (run_futex) {
+        pr_info("\n================================================================================\n");
+        telemetry_start();
+        run_futex_benchmark(num_threads, benchmark_duration_sec);
+        telemetry_stop("futex");
+    }
+    if (run_crypto) {
+        pr_info("\n================================================================================\n");
+        telemetry_start();
+        run_crypto_benchmark(num_threads, benchmark_duration_sec);
+        telemetry_stop("crypto");
+    }
+    if (run_zero) {
+        pr_info("\n================================================================================\n");
+        telemetry_start();
+        run_zero_benchmark(num_threads, benchmark_duration_sec);
+        telemetry_stop("zero");
+    }
 
     pr_info("Run complete.\n");
 
