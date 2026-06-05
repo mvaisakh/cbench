@@ -60,6 +60,7 @@ static void load_kallsyms(void) {
     if (!ksyms) { fclose(f); return; }
 
     char line[256];
+    int zero_addrs = 0;
     while (fgets(line, sizeof(line), f)) {
         uint64_t addr;
         char type;
@@ -67,6 +68,7 @@ static void load_kallsyms(void) {
         if (sscanf(line, "%lx %c %63s", &addr, &type, name) == 3) {
             if (type == 't' || type == 'T') {
                 if (name[0] == '$') continue; /* Ignore ARM mapping symbols like $d.18 */
+                if (addr == 0) zero_addrs++;
                 if (num_ksyms >= capacity) {
                     capacity *= 2;
                     ksyms = realloc(ksyms, sizeof(struct ksym) * capacity);
@@ -79,6 +81,20 @@ static void load_kallsyms(void) {
         }
     }
     fclose(f);
+
+    if (num_ksyms > 0 && zero_addrs > num_ksyms / 2) {
+        pr_info("\n=======================================================\n");
+        pr_info("❌ PROFILER WARNING: Kernel addresses are hidden!\n");
+        pr_info("Android's 'kptr_restrict' security feature is hiding the\n");
+        pr_info("real memory addresses in /proc/kallsyms. All symbols\n");
+        pr_info("are being read as 0x0000000000000000.\n\n");
+        pr_info("To fix this and see real Hotspots, run this as root:\n");
+        pr_info("  echo 0 > /proc/sys/kernel/kptr_restrict\n");
+        pr_info("=======================================================\n\n");
+        num_ksyms = 0; /* Invalidate symbols so we don't print garbage */
+        return;
+    }
+
     qsort(ksyms, num_ksyms, sizeof(struct ksym), ksym_cmp);
 }
 
