@@ -14,6 +14,7 @@
 #include "profiler.h"
 #include "cbench.h"
 #include "topology.h"
+#include "report.h"
 
 #define PERF_PAGES 8
 #define PERF_PAGE_SIZE 4096
@@ -244,5 +245,36 @@ void profiler_stop(const char *subsystem) {
     for (int i = 0; i < 5 && i < num_agg; i++) {
         double pct = (double)agg[i].count * 100.0 / num_samples;
         pr_info("%5.2f%% : %s\n", pct, agg[i].name);
+    }
+
+    int has_spinlock = 0, has_alloc = 0, has_syscall = 0, has_idle = 0, has_vfs = 0;
+    for (int i = 0; i < 5 && i < num_agg; i++) {
+        const char *n = agg[i].name;
+        if (strstr(n, "_raw_spin_lock") || strstr(n, "_raw_spin_unlock")) has_spinlock = 1;
+        if (strstr(n, "clear_page") || strstr(n, "alloc_pages")) has_alloc = 1;
+        if (strstr(n, "el0_svc_common") || strstr(n, "do_syscall_64")) has_syscall = 1;
+        if (strstr(n, "cpuidle_enter_state") || strstr(n, "do_idle")) has_idle = 1;
+        if (strstr(n, "ext4_") || strstr(n, "f2fs_") || strstr(n, "vfs_")) has_vfs = 1;
+    }
+
+    if (has_spinlock) {
+        pr_info("💡 KERNEL PATCH ADVICE (%s): High spinlock contention detected. Consider replacing these locks with RCU (Read-Copy-Update) or lockless data structures.\n", subsystem);
+        report_add_heuristic(subsystem, "High spinlock contention detected. Consider replacing these locks with RCU or lockless data structures.");
+    }
+    if (has_alloc) {
+        pr_info("💡 KERNEL PATCH ADVICE (%s): High memory allocation overhead. Evaluate using kmem_cache (slab allocators) or Transparent Huge Pages (THP).\n", subsystem);
+        report_add_heuristic(subsystem, "High memory allocation overhead. Evaluate using kmem_cache or THP.");
+    }
+    if (has_syscall) {
+        pr_info("💡 KERNEL PATCH ADVICE (%s): High User/Kernel boundary overhead. Consider batching operations (e.g. io_uring) or moving hot paths to eBPF.\n", subsystem);
+        report_add_heuristic(subsystem, "High User/Kernel boundary overhead. Consider batching operations (io_uring) or eBPF.");
+    }
+    if (has_idle) {
+        pr_info("💡 KERNEL PATCH ADVICE (%s): Threads are spending significant time entering CPU idle states. Investigate I/O scheduler queue depths or interrupt coalescing.\n", subsystem);
+        report_add_heuristic(subsystem, "Threads entering CPU idle states frequently. Investigate I/O scheduler queue depths.");
+    }
+    if (has_vfs) {
+        pr_info("💡 KERNEL PATCH ADVICE (%s): Filesystem bottleneck detected. Consider tuning mount options (noatime, async) or adjusting VFS caches.\n", subsystem);
+        report_add_heuristic(subsystem, "Filesystem bottleneck. Tune mount options or adjust VFS caches.");
     }
 }

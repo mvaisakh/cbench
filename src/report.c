@@ -27,9 +27,18 @@ static int sysinfo_count = 0;
 static struct metric_entry metrics[MAX_METRICS];
 static int metric_count = 0;
 
+#define MAX_HEURISTICS 16
+struct heuristic_entry {
+    char subsystem[32];
+    char message[256];
+};
+static struct heuristic_entry heuristics[MAX_HEURISTICS];
+static int heuristic_count = 0;
+
 void report_init(void) {
     sysinfo_count = 0;
     metric_count = 0;
+    heuristic_count = 0;
 }
 
 void report_add_sysinfo(const char *key, const char *value) {
@@ -46,6 +55,13 @@ void report_add_metric(const char *subsystem, const char *metric, double value, 
     metrics[metric_count].value = value;
     strncpy(metrics[metric_count].unit, unit, 15);
     metric_count++;
+}
+
+void report_add_heuristic(const char *subsystem, const char *message) {
+    if (heuristic_count >= MAX_HEURISTICS) return;
+    strncpy(heuristics[heuristic_count].subsystem, subsystem, 31);
+    strncpy(heuristics[heuristic_count].message, message, 255);
+    heuristic_count++;
 }
 
 void report_print_json(void) {
@@ -68,6 +84,16 @@ void report_print_json(void) {
         printf("      \"value\": %f,\n", metrics[i].value);
         printf("      \"unit\": \"%s\"\n", metrics[i].unit);
         printf("    }%s\n", (i == metric_count - 1) ? "" : ",");
+    }
+    printf("  ],\n");
+
+    /* Heuristics */
+    printf("  \"heuristics\": [\n");
+    for (i = 0; i < heuristic_count; i++) {
+        printf("    {\n");
+        printf("      \"subsystem\": \"%s\",\n", heuristics[i].subsystem);
+        printf("      \"message\": \"%s\"\n", heuristics[i].message);
+        printf("    }%s\n", (i == heuristic_count - 1) ? "" : ",");
     }
     printf("  ]\n");
     printf("}\n");
