@@ -103,4 +103,28 @@ void cpuidle_stop(const char *subsystem)
     } else {
         pr_info("No significant idle residency detected.\n");
     }
+
+    /* Automated Conclusions */
+    uint64_t expected_total_us = (uint64_t)benchmark_duration_sec * num_threads * 1000000ULL;
+    double idle_pct = 0.0;
+    if (expected_total_us > 0) {
+        idle_pct = (double)total_idle_time * 100.0 / expected_total_us;
+    }
+
+    pr_info("--- Actionable Insight (%s) ---\n", subsystem);
+    if (idle_pct > 25.0) {
+        pr_info("💡 BOTTLENECK: Massive idle residency (%.1f%% of available CPU time).\n", idle_pct);
+        pr_info("   Threads are blocking and sleeping instead of processing. This usually\n");
+        pr_info("   indicates severe lock contention (e.g., spinlocks, mutexes) or hitting\n");
+        pr_info("   hard hardware limits (like disk I/O wait). Check VFS or scheduling locks!\n");
+    } else if (idle_pct > 10.0) {
+        pr_info("💡 WARNING: Moderate idle residency (%.1f%% of available CPU time).\n", idle_pct);
+        pr_info("   Some threads are occasionally yielding. Check the kernel profiler\n");
+        pr_info("   results below to see if 'schedule' or 'mutex_spin_on_owner' is high.\n");
+    } else {
+        pr_info("💡 EXCELLENT: Near-perfect CPU utilization (Total Idle: %.1f%%).\n", idle_pct);
+        pr_info("   The kernel is scaling flawlessly across all threads without blocking.\n");
+        pr_info("   Any bottlenecks here are purely algorithmic. Look at the kernel\n");
+        pr_info("   profiler to optimize the specific functions taking the most time.\n");
+    }
 }
