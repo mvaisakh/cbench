@@ -1,0 +1,6 @@
+# Build artifacts
+obj/
+cbench
+
+# Temporary test files
+*.tmp
