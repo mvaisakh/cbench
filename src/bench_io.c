@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "bench_io.h"
 #include "report.h"
+#include "telemetry.h"
 #include "topology.h"
 #include "energy.h"
 
@@ -99,7 +100,6 @@ int run_io_benchmark(void)
     args = malloc(sizeof(struct io_worker_args) * num_threads);
     if (!threads || !args) return -1;
 
-    energy_start();
 
     for (i = 0; i < num_threads; i++) {
         args[i].thread_id = i;
@@ -114,7 +114,6 @@ int run_io_benchmark(void)
         total_read_bw += args[i].read_bw;
     }
 
-    energy_stop();
     double joules = energy_get_joules();
 
     pr_info("Total Aggregated Write Bandwidth (Buffered + fsync): %.2f MB/s\n", total_write_bw);

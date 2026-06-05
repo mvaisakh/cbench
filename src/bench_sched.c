@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "bench_sched.h"
 #include "report.h"
+#include "telemetry.h"
 #include "topology.h"
 #include "energy.h"
 
@@ -83,7 +84,6 @@ int run_sched_benchmark(void)
     args = malloc(sizeof(struct sched_worker_args) * num_threads);
     if (!threads || !args) return -1;
 
-    energy_start();
     start = get_time_ns();
 
     for (i = 0; i < num_threads; i++) {
@@ -98,7 +98,6 @@ int run_sched_benchmark(void)
     }
 
     end = get_time_ns();
-    energy_stop();
 
     uint64_t total_ns = end - start;
     double throughput = (double)(total_iters * 2) / (total_ns / 1000000000.0); /* 2 switches per iter */

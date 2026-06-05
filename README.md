@@ -92,7 +92,20 @@ su
 cd /data/local/tmp/
 chmod +x cbench
 
-# REQUIRED: Expose kernel memory addresses to the profiler
+# REQUIRED:
+## Telemetry & OS Insights
+Every benchmark is wrapped in a highly precise telemetry envelope that passively tracks kernel performance without altering the benchmark payload:
+- **Hotspot Profiler**: Samples function IPs using `perf_event_open` to find exact C-functions causing bottlenecks.
+- **CPU Idle States**: Parses `/sys/devices/system/cpu/cpu*/cpuidle/` to measure C-State residency and detect blocking.
+- **Hardware Cache Profiler**: Tracks `PERF_COUNT_HW_CACHE_MISSES` to calculate IPC and pinpoint memory stalls.
+- **Energy Subsystem**: Integrates with Android Battery Management (`/sys/class/power_supply/battery`) and Intel RAPL to report exact Joules consumed.
+- **Thermal Subsystem**: Scans Android thermal zones to detect severe CPU frequency throttling (>85°C).
+- **SoftIRQ / Interrupts**: Snapshots `/proc/softirqs` to detect network/storage interrupt storms.
+- **VMStat Thrashing**: Tracks `/proc/vmstat` major page faults to detect when the kernel starts aggressively swapping to `zRAM`.
+
+---
+
+# Expose kernel memory addresses to the profiler
 echo 0 > /proc/sys/kernel/kptr_restrict
 
 # Run the benchmark
@@ -100,4 +113,4 @@ echo 0 > /proc/sys/kernel/kptr_restrict
 ```
 
 ### 3. Energy Subsystem on Android
-Qualcomm Snapdragon and MediaTek Android devices rarely implement standard Linux power supply nodes. `cbench` dynamically scans `/sys/class/power_supply/` for `battery/` and `bms/` structures, explicitly looking for accumulative `energy_now` sensors. If none exist, it synthesizes total Joules by taking instantaneous `current_now` and `voltage_now` samples during the benchmark and integrating them over the time elapsed.
+Qualcomm Snapdragon and MediaTek Android devices rarely implement standard Linux power supply nodes. `cbench` dynamically scans `/sys/class/power_supply/` for `battery/` and `bms/` structures, looking for accumulative `energy_now` sensors. If none exist, it synthesizes total Joules by taking instantaneous `current_now` and `voltage_now` samples during the benchmark and integrating them over the time elapsed.

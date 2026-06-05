@@ -18,10 +18,8 @@
 #include "bench_zero.h"
 #include "report.h"
 #include "sysinfo.h"
+#include "telemetry.h"
 #include "topology.h"
-#include "energy.h"
-#include "profiler.h"
-#include "cpuidle.h"
 
 int num_threads = 0;
 int benchmark_duration_sec = 10;
@@ -92,9 +90,7 @@ int main(int argc, char **argv)
     report_init();
     collect_sysinfo();
     topology_init();
-    energy_init();
-    profiler_init();
-    cpuidle_init();
+    telemetry_init();
 
     if (num_threads <= 0) {
         num_threads = system_topo.total_cpus;
@@ -102,32 +98,24 @@ int main(int argc, char **argv)
     pr_info("Starting Cerium Benchmarking (cbench) with %d thread(s), %d seconds per test...\n", num_threads, benchmark_duration_sec);
 
     if (run_syscall) {
-        profiler_start();
-        cpuidle_start();
+        telemetry_start();
         run_syscall_benchmark();
-        cpuidle_stop("syscall");
-        profiler_stop("syscall");
+        telemetry_stop("syscall");
     }
     if (run_sched) {
-        profiler_start();
-        cpuidle_start();
+        telemetry_start();
         run_sched_benchmark();
-        cpuidle_stop("sched");
-        profiler_stop("sched");
+        telemetry_stop("sched");
     }
     if (run_mem) {
-        profiler_start();
-        cpuidle_start();
+        telemetry_start();
         run_mem_benchmark();
-        cpuidle_stop("mem");
-        profiler_stop("mem");
+        telemetry_stop("mem");
     }
     if (run_io) {
-        profiler_start();
-        cpuidle_start();
+        telemetry_start();
         run_io_benchmark();
-        cpuidle_stop("io");
-        profiler_stop("io");
+        telemetry_stop("io");
     }
     if (run_rng) run_rng_benchmark(num_threads, benchmark_duration_sec);
     if (run_net) run_net_benchmark(num_threads, benchmark_duration_sec);

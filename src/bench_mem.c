@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "bench_mem.h"
 #include "report.h"
+#include "telemetry.h"
 #include "topology.h"
 #include "energy.h"
 
@@ -81,7 +82,6 @@ int run_mem_benchmark(void)
     args = malloc(sizeof(struct mem_worker_args) * num_threads);
     if (!threads || !args) return -1;
 
-    energy_start();
 
     for (i = 0; i < num_threads; i++) {
         args[i].thread_id = i;
@@ -96,7 +96,6 @@ int run_mem_benchmark(void)
         total_copy_bw += args[i].copy_bw;
     }
 
-    energy_stop();
     double joules = energy_get_joules();
 
     pr_info("Total Aggregated Write Bandwidth: %.2f MB/s\n", total_write_bw);

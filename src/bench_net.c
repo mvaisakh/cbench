@@ -50,9 +50,6 @@ void run_net_benchmark(int num_threads, int duration) {
     
     pr_info("Running Network Subsystem Benchmark (UDP Loopback) across %d thread(s) for %d seconds...\n", num_threads, duration);
     
-    cpuidle_start();
-    energy_start();
-    profiler_start();
     
     uint64_t start = get_time_ns();
     for (int i=0; i<num_threads; i++) {
@@ -64,9 +61,6 @@ void run_net_benchmark(int num_threads, int duration) {
     for (int i=0; i<num_threads; i++) pthread_join(threads[i], NULL);
     uint64_t stop = get_time_ns();
     
-    profiler_stop("net");
-    energy_stop();
-    cpuidle_stop("net");
     
     uint64_t total_bytes = 0;
     for (int i=0; i<num_threads; i++) total_bytes += args[i].bytes_sent;

@@ -75,9 +75,6 @@ void run_crypto_benchmark(int num_threads, int duration) {
     
     pr_info("Running Crypto Subsystem Benchmark (AF_ALG sha256) across %d thread(s) for %d seconds...\n", num_threads, duration);
     
-    cpuidle_start();
-    energy_start();
-    profiler_start();
     
     uint64_t start = get_time_ns();
     for (int i=0; i<num_threads; i++) {
@@ -89,9 +86,6 @@ void run_crypto_benchmark(int num_threads, int duration) {
     for (int i=0; i<num_threads; i++) pthread_join(threads[i], NULL);
     uint64_t stop = get_time_ns();
     
-    profiler_stop("crypto");
-    energy_stop();
-    cpuidle_stop("crypto");
     
     if (!args[0].supported) {
         pr_warn("Kernel Crypto API (AF_ALG) not supported or sha256 not available on this kernel.\n");

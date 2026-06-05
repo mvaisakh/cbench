@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "bench_syscall.h"
 #include "report.h"
+#include "telemetry.h"
 #include "topology.h"
 #include "energy.h"
 
@@ -50,7 +51,6 @@ int run_syscall_benchmark(void)
     args = malloc(sizeof(struct syscall_worker_args) * num_threads);
     if (!threads || !args) return -1;
 
-    energy_start();
     start = get_time_ns();
 
     for (i = 0; i < num_threads; i++) {
@@ -65,7 +65,6 @@ int run_syscall_benchmark(void)
     }
 
     end = get_time_ns();
-    energy_stop();
 
     uint64_t total_ns = end - start;
     double throughput = (double)total_iters / (total_ns / 1000000000.0);
