@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include "cbench.h"
 #include "utils.h"
+#include "bench_syscall.h"
 
 static void usage(const char *progname)
 {
@@ -10,23 +11,29 @@ static void usage(const char *progname)
     printf("Options:\n");
     printf("  -h, --help       Show this message\n");
     printf("  -a, --all        Run all benchmarks\n");
+    printf("  -s, --syscall    Run Syscall Latency benchmark\n");
 }
 
 int main(int argc, char **argv)
 {
     int opt;
     int run_all = 0;
+    int run_syscall = 0;
 
     static struct option long_options[] = {
         {"help",    no_argument, 0, 'h'},
         {"all",     no_argument, 0, 'a'},
+        {"syscall", no_argument, 0, 's'},
         {0, 0, 0, 0}
     };
 
-    while ((opt = getopt_long(argc, argv, "ha", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "has", long_options, NULL)) != -1) {
         switch (opt) {
         case 'a':
             run_all = 1;
+            break;
+        case 's':
+            run_syscall = 1;
             break;
         case 'h':
         default:
@@ -37,9 +44,13 @@ int main(int argc, char **argv)
 
     pr_info("Starting Cerium Benchmarking (cbench)...\n");
 
-    if (!run_all) {
-        pr_info("No benchmarks selected. Use -a to run all.\n");
+    if (!run_all && !run_syscall) {
+        pr_info("No benchmarks selected. Use -a to run all or -h for help.\n");
         return 0;
+    }
+
+    if (run_all || run_syscall) {
+        run_syscall_benchmark();
     }
 
     pr_info("Run complete.\n");
