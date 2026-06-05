@@ -62,6 +62,7 @@ static void load_kallsyms(void) {
         char name[64];
         if (sscanf(line, "%lx %c %63s", &addr, &type, name) == 3) {
             if (type == 't' || type == 'T') {
+                if (name[0] == '$') continue; /* Ignore ARM mapping symbols like $d.18 */
                 if (num_ksyms >= capacity) {
                     capacity *= 2;
                     ksyms = realloc(ksyms, sizeof(struct ksym) * capacity);

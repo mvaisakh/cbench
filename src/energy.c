@@ -11,8 +11,11 @@
 static int use_rapl = 0;
 static int use_battery_charge = 0;
 static int use_battery_energy = 0;
+static int use_battery_current = 0;
 static uint64_t start_energy_val = 0;
 static uint64_t stop_energy_val = 0;
+static uint64_t start_time_ns = 0;
+static uint64_t stop_time_ns = 0;
 static char active_path[256];
 
 static uint64_t read_sysfs_uint64(const char *path)
@@ -71,19 +74,36 @@ void energy_init(void)
         }
     }
 
+    /* Try Android 'current_now' (uA) */
+    const char *current_paths[] = {
+        "/sys/class/power_supply/battery/current_now",
+        "/sys/class/power_supply/bms/current_now",
+        NULL
+    };
+    for (int i=0; current_paths[i]; i++) {
+        if (read_sysfs_uint64(current_paths[i]) > 0) {
+            use_battery_current = 1;
+            snprintf(active_path, sizeof(active_path), "%s", current_paths[i]);
+            pr_info("Energy subsystem initialized: using Android instantaneous current (uA)\n");
+            return;
+        }
+    }
+
     pr_info("Energy subsystem: No standard power interfaces found (Root required?).\n");
 }
 
 void energy_start(void)
 {
-    if (use_rapl || use_battery_charge || use_battery_energy) {
+    start_time_ns = get_time_ns();
+    if (use_rapl || use_battery_charge || use_battery_energy || use_battery_current) {
         start_energy_val = read_sysfs_uint64(active_path);
     }
 }
 
 void energy_stop(void)
 {
-    if (use_rapl || use_battery_charge || use_battery_energy) {
+    stop_time_ns = get_time_ns();
+    if (use_rapl || use_battery_charge || use_battery_energy || use_battery_current) {
         stop_energy_val = read_sysfs_uint64(active_path);
     }
 }
@@ -96,15 +116,23 @@ double energy_get_joules(void)
         }
     } else if (use_battery_energy) {
         uint64_t diff_uwh = (start_energy_val >= stop_energy_val) ? (start_energy_val - stop_energy_val) : 0;
-        /* Joules = uWh * 3600 / 1000000 */
         return (double)diff_uwh * 3600.0 / 1000000.0;
     } else if (use_battery_charge) {
         uint64_t diff_uah = (start_energy_val >= stop_energy_val) ? (start_energy_val - stop_energy_val) : 0;
         uint64_t voltage = read_battery_voltage_now(); /* uV */
-        if (voltage == 0) voltage = 3800000; /* assume 3.8V */
+        if (voltage == 0) voltage = 3800000;
         double amphours = (double)diff_uah / 1000000.0;
         double volts = (double)voltage / 1000000.0;
         return amphours * 3600.0 * volts;
+    } else if (use_battery_current) {
+        /* Approximate using average current over the elapsed duration */
+        double duration_sec = (double)(stop_time_ns - start_time_ns) / 1000000000.0;
+        uint64_t avg_current_ua = (start_energy_val + stop_energy_val) / 2;
+        uint64_t voltage = read_battery_voltage_now();
+        if (voltage == 0) voltage = 3800000;
+        double amps = (double)avg_current_ua / 1000000.0;
+        double volts = (double)voltage / 1000000.0;
+        return amps * volts * duration_sec;
     }
     return 0.0;
 }

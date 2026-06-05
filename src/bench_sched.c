@@ -59,11 +59,13 @@ static void *sched_worker(void *arg)
             }
             args->iters += 1000;
         }
+        close(p1[1]); /* Close write end so child's read fails and it exits cleanly */
+        close(p2[0]);
         wait(NULL);
     }
     
-    close(p1[0]); close(p1[1]);
-    close(p2[0]); close(p2[1]);
+    close(p1[0]);
+    close(p2[1]);
 
     return NULL;
 }

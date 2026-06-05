@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <signal.h>
 #include "cbench.h"
 #include "utils.h"
 #include "bench_syscall.h"
@@ -99,6 +100,8 @@ int main(int argc, char **argv)
     if (benchmark_duration_sec <= 0) {
         benchmark_duration_sec = 10;
     }
+
+    signal(SIGPIPE, SIG_IGN);
 
     report_init();
     collect_sysinfo();
