@@ -15,6 +15,11 @@
 2. **Scheduler Context Switching**: Measures inter-process communication and scheduling overhead via tightly coupled pipe ping-pongs.
 3. **Memory Subsystem**: Aggregates throughput for sequential aligned writes and fast `memcpy` operations.
 4. **I/O Subsystem**: Measures buffered write bandwidth (forcing `fsync` journal flushes) and cached read bandwidth.
+5. **RNG Subsystem**: Threads constantly `read()` from `/dev/urandom` to stress the kernel entropy pool, ChaCha20 PRNG, and `drivers/char/random.c` locks.
+6. **Network Stack**: UDP loopback (`127.0.0.1`) blasting to stress `sk_buff` allocation, network namespaces, and the TCP/IP stack (`net/core/dev.c`).
+7. **Futex Contention**: Threads heavily contest a shared futex via `syscall(SYS_futex)`. This is the #1 bottleneck for the Android Java Runtime (ART).
+8. **Kernel Crypto API (`AF_ALG`)**: Binds to `AF_ALG` sockets to compute `sha256` hashes, testing if the kernel is leveraging hardware cryptography (like Qualcomm CE).
+9. **Zero / Copy-to-User**: Massive concurrent `read()`s from `/dev/zero` to isolate and stress `clear_page` and `copy_to_user` memory operations.
 
 ---
 
@@ -55,6 +60,11 @@ sudo ./cbench -a -d 15 -j
 - `-S` : Run only the Scheduler Context Switch benchmark.
 - `-m` : Run only the Memory Bandwidth benchmark.
 - `-i` : Run only the I/O Bandwidth benchmark.
+- `-r` : Run only the RNG benchmark (`/dev/urandom`).
+- `-n` : Run only the Network loopback benchmark.
+- `-f` : Run only the Futex contention benchmark.
+- `-c` : Run only the Kernel Crypto API (`AF_ALG`) benchmark.
+- `-z` : Run only the Zero / Copy-to-User benchmark (`/dev/zero`).
 - `-j` : Print structured JSON metrics at the end of the run.
 
 ---
