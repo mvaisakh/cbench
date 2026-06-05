@@ -3,6 +3,7 @@
 #include "cbench.h"
 #include "utils.h"
 #include "bench_syscall.h"
+#include "report.h"
 
 #define ITERS 10000000
 
@@ -25,6 +26,8 @@ int run_syscall_benchmark(void)
     pr_info("Syscall SYS_gettid: %d iterations\n", ITERS);
     pr_info("Total time: %llu ns\n", (unsigned long long)total_ns);
     pr_info("Average latency per syscall: %.2f ns\n", avg_ns);
+
+    report_add_metric("syscall", "gettid_latency", avg_ns, "ns");
 
     return 0;
 }

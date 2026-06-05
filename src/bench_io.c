@@ -7,6 +7,7 @@
 #include "cbench.h"
 #include "utils.h"
 #include "bench_io.h"
+#include "report.h"
 
 #define IO_FILE_SIZE (128 * 1024 * 1024) /* 128 MB */
 #define IO_BLOCK_SIZE (64 * 1024)        /* 64 KB */
@@ -51,6 +52,7 @@ int run_io_benchmark(void)
     total_ns = (double)(end - start);
     bw_mb_s = (IO_FILE_SIZE / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
     pr_info("Sequential Write (Buffered + fsync): %.2f MB/s\n", bw_mb_s);
+    report_add_metric("io", "seq_write_buffered_fsync_bw", bw_mb_s, "MB/s");
 
     /* 2. Sequential Read (Cached usually) */
     fd = open(test_file, O_RDONLY);
@@ -73,6 +75,7 @@ int run_io_benchmark(void)
     total_ns = (double)(end - start);
     bw_mb_s = (IO_FILE_SIZE / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
     pr_info("Sequential Read (Cached): %.2f MB/s\n", bw_mb_s);
+    report_add_metric("io", "seq_read_cached_bw", bw_mb_s, "MB/s");
 
     unlink(test_file);
     free(buf);

@@ -5,6 +5,7 @@
 #include "cbench.h"
 #include "utils.h"
 #include "bench_sched.h"
+#include "report.h"
 
 #define PING_PONG_ITERS 100000
 
@@ -56,6 +57,8 @@ int run_sched_benchmark(void)
     pr_info("Pipe Ping-Pong: %d iterations (2 context switches per iteration)\n", PING_PONG_ITERS);
     pr_info("Total time: %llu ns\n", (unsigned long long)total_ns);
     pr_info("Average context switch latency: %.2f ns\n", avg_ns);
+
+    report_add_metric("sched", "context_switch_latency", avg_ns, "ns");
 
     return 0;
 }

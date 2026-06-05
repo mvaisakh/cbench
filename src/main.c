@@ -7,6 +7,8 @@
 #include "bench_sched.h"
 #include "bench_mem.h"
 #include "bench_io.h"
+#include "report.h"
+#include "sysinfo.h"
 
 static void usage(const char *progname)
 {
@@ -18,6 +20,7 @@ static void usage(const char *progname)
     printf("  -c, --sched      Run Scheduler Context Switch benchmark\n");
     printf("  -m, --mem        Run Memory Subsystem benchmark\n");
     printf("  -i, --io         Run I/O Subsystem benchmark\n");
+    printf("  -j, --json       Output results in JSON format at the end\n");
 }
 
 int main(int argc, char **argv)
@@ -28,6 +31,7 @@ int main(int argc, char **argv)
     int run_sched = 0;
     int run_mem = 0;
     int run_io = 0;
+    int json_out = 0;
 
     static struct option long_options[] = {
         {"help",    no_argument, 0, 'h'},
@@ -36,10 +40,11 @@ int main(int argc, char **argv)
         {"sched",   no_argument, 0, 'c'},
         {"mem",     no_argument, 0, 'm'},
         {"io",      no_argument, 0, 'i'},
+        {"json",    no_argument, 0, 'j'},
         {0, 0, 0, 0}
     };
 
-    while ((opt = getopt_long(argc, argv, "hascmi", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hascmij", long_options, NULL)) != -1) {
         switch (opt) {
         case 'a':
             run_all = 1;
@@ -56,6 +61,9 @@ int main(int argc, char **argv)
         case 'i':
             run_io = 1;
             break;
+        case 'j':
+            json_out = 1;
+            break;
         case 'h':
         default:
             usage(argv[0]);
@@ -63,12 +71,15 @@ int main(int argc, char **argv)
         }
     }
 
-    pr_info("Starting Cerium Benchmarking (cbench)...\n");
-
     if (!run_all && !run_syscall && !run_sched && !run_mem && !run_io) {
         pr_info("No benchmarks selected. Use -a to run all or -h for help.\n");
         return 0;
     }
+
+    report_init();
+    collect_sysinfo();
+
+    pr_info("Starting Cerium Benchmarking (cbench)...\n");
 
     if (run_all || run_syscall) {
         run_syscall_benchmark();
@@ -87,5 +98,10 @@ int main(int argc, char **argv)
     }
 
     pr_info("Run complete.\n");
+
+    if (json_out) {
+        report_print_json();
+    }
+
     return 0;
 }

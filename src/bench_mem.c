@@ -5,6 +5,7 @@
 #include "cbench.h"
 #include "utils.h"
 #include "bench_mem.h"
+#include "report.h"
 
 #define MEM_SIZE (256 * 1024 * 1024) /* 256 MB */
 #define PAGE_SIZE 4096
@@ -35,6 +36,7 @@ int run_mem_benchmark(void)
     
     total_ns = (double)(end - start);
     pr_info("Page Faults (Anonymous): %.2f ms to fault %u pages (256 MB)\n", total_ns / 1000000.0, MEM_SIZE / PAGE_SIZE);
+    report_add_metric("mem", "anon_page_fault", total_ns / 1000000.0, "ms");
 
     /* 2. Sequential Write Bandwidth */
     start = get_time_ns();
@@ -44,6 +46,7 @@ int run_mem_benchmark(void)
     total_ns = (double)(end - start);
     bw_mb_s = (MEM_SIZE / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
     pr_info("Sequential Write (memset): %.2f MB/s\n", bw_mb_s);
+    report_add_metric("mem", "seq_write_bw", bw_mb_s, "MB/s");
 
     /* 3. Sequential Copy Bandwidth */
     mem2 = mmap(NULL, MEM_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -58,6 +61,7 @@ int run_mem_benchmark(void)
         total_ns = (double)(end - start);
         bw_mb_s = (MEM_SIZE / (1024.0 * 1024.0)) / (total_ns / 1000000000.0);
         pr_info("Memory Copy (memcpy): %.2f MB/s\n", bw_mb_s);
+        report_add_metric("mem", "memcpy_bw", bw_mb_s, "MB/s");
         
         munmap(mem2, MEM_SIZE);
     }
