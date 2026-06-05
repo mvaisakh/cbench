@@ -37,6 +37,9 @@ struct hwperf_ctx {
     int fd_cycles;
     int fd_inst;
     int fd_miss;
+    int fd_l2_miss;
+    int fd_branch_miss;
+    int fd_dtlb_miss;
 };
 static struct hwperf_ctx *ctxs = NULL;
 
@@ -116,7 +119,7 @@ void hwperf_start(void) {
         start_cycles = read_pmu_cycles();
     } else if (mode_perf) {
         for (int cpu = 0; cpu < system_topo.total_cpus; cpu++) {
-            struct perf_event_attr attr_cyc, attr_inst, attr_miss;
+            struct perf_event_attr attr_cyc, attr_inst, attr_miss, attr_l2, attr_branch, attr_dtlb;
             
             memset(&attr_cyc, 0, sizeof(attr_cyc));
             attr_cyc.type = PERF_TYPE_RAW;
@@ -138,10 +141,34 @@ void hwperf_start(void) {
             attr_miss.config = 0x13; // L1D Cache Miss
             attr_miss.disabled = 1;
             attr_miss.exclude_user = 1;
+
+            memset(&attr_l2, 0, sizeof(attr_l2));
+            attr_l2.type = PERF_TYPE_RAW;
+            attr_l2.size = sizeof(attr_l2);
+            attr_l2.config = 0x17; // L2 Cache Miss
+            attr_l2.disabled = 1;
+            attr_l2.exclude_user = 1;
+
+            memset(&attr_branch, 0, sizeof(attr_branch));
+            attr_branch.type = PERF_TYPE_RAW;
+            attr_branch.size = sizeof(attr_branch);
+            attr_branch.config = 0x22; // Branch Misprediction
+            attr_branch.disabled = 1;
+            attr_branch.exclude_user = 1;
+
+            memset(&attr_dtlb, 0, sizeof(attr_dtlb));
+            attr_dtlb.type = PERF_TYPE_RAW;
+            attr_dtlb.size = sizeof(attr_dtlb);
+            attr_dtlb.config = 0x25; // Data TLB Miss
+            attr_dtlb.disabled = 1;
+            attr_dtlb.exclude_user = 1;
             
             ctxs[cpu].fd_cycles = sys_perf_event_open(&attr_cyc, -1, cpu, -1, 0);
             ctxs[cpu].fd_inst = sys_perf_event_open(&attr_inst, -1, cpu, -1, 0);
             ctxs[cpu].fd_miss = sys_perf_event_open(&attr_miss, -1, cpu, -1, 0);
+            ctxs[cpu].fd_l2_miss = sys_perf_event_open(&attr_l2, -1, cpu, -1, 0);
+            ctxs[cpu].fd_branch_miss = sys_perf_event_open(&attr_branch, -1, cpu, -1, 0);
+            ctxs[cpu].fd_dtlb_miss = sys_perf_event_open(&attr_dtlb, -1, cpu, -1, 0);
             
             if (ctxs[cpu].fd_cycles >= 0) {
                 ioctl(ctxs[cpu].fd_cycles, PERF_EVENT_IOC_RESET, 0);
@@ -154,6 +181,18 @@ void hwperf_start(void) {
             if (ctxs[cpu].fd_miss >= 0) {
                 ioctl(ctxs[cpu].fd_miss, PERF_EVENT_IOC_RESET, 0);
                 ioctl(ctxs[cpu].fd_miss, PERF_EVENT_IOC_ENABLE, 0);
+            }
+            if (ctxs[cpu].fd_l2_miss >= 0) {
+                ioctl(ctxs[cpu].fd_l2_miss, PERF_EVENT_IOC_RESET, 0);
+                ioctl(ctxs[cpu].fd_l2_miss, PERF_EVENT_IOC_ENABLE, 0);
+            }
+            if (ctxs[cpu].fd_branch_miss >= 0) {
+                ioctl(ctxs[cpu].fd_branch_miss, PERF_EVENT_IOC_RESET, 0);
+                ioctl(ctxs[cpu].fd_branch_miss, PERF_EVENT_IOC_ENABLE, 0);
+            }
+            if (ctxs[cpu].fd_dtlb_miss >= 0) {
+                ioctl(ctxs[cpu].fd_dtlb_miss, PERF_EVENT_IOC_RESET, 0);
+                ioctl(ctxs[cpu].fd_dtlb_miss, PERF_EVENT_IOC_ENABLE, 0);
             }
         }
     }
@@ -183,6 +222,10 @@ void hwperf_stop(const char *subsystem) {
         
         report_add_metric(subsystem, "pmu_cycles", (double)total_cycles, "cycles");
     } else if (mode_perf) {
+        uint64_t total_l2 = 0;
+        uint64_t total_branch = 0;
+        uint64_t total_dtlb = 0;
+
         for (int cpu = 0; cpu < system_topo.total_cpus; cpu++) {
             if (ctxs[cpu].fd_cycles >= 0) {
                 ioctl(ctxs[cpu].fd_cycles, PERF_EVENT_IOC_DISABLE, 0);
@@ -208,6 +251,27 @@ void hwperf_stop(const char *subsystem) {
                 ctxs[cpu].fd_miss = -1;
                 supported = 1;
             }
+            if (ctxs[cpu].fd_l2_miss >= 0) {
+                ioctl(ctxs[cpu].fd_l2_miss, PERF_EVENT_IOC_DISABLE, 0);
+                uint64_t val = 0;
+                if (read(ctxs[cpu].fd_l2_miss, &val, sizeof(val)) == sizeof(val)) total_l2 += val;
+                close(ctxs[cpu].fd_l2_miss);
+                ctxs[cpu].fd_l2_miss = -1;
+            }
+            if (ctxs[cpu].fd_branch_miss >= 0) {
+                ioctl(ctxs[cpu].fd_branch_miss, PERF_EVENT_IOC_DISABLE, 0);
+                uint64_t val = 0;
+                if (read(ctxs[cpu].fd_branch_miss, &val, sizeof(val)) == sizeof(val)) total_branch += val;
+                close(ctxs[cpu].fd_branch_miss);
+                ctxs[cpu].fd_branch_miss = -1;
+            }
+            if (ctxs[cpu].fd_dtlb_miss >= 0) {
+                ioctl(ctxs[cpu].fd_dtlb_miss, PERF_EVENT_IOC_DISABLE, 0);
+                uint64_t val = 0;
+                if (read(ctxs[cpu].fd_dtlb_miss, &val, sizeof(val)) == sizeof(val)) total_dtlb += val;
+                close(ctxs[cpu].fd_dtlb_miss);
+                ctxs[cpu].fd_dtlb_miss = -1;
+            }
         }
         
         if (supported) {
@@ -222,11 +286,35 @@ void hwperf_stop(const char *subsystem) {
             }
             if (total_inst > 0) {
                 double miss_rate = (double)total_miss * 100.0 / total_inst;
-                pr_info("Hardware Cache Miss Rate: %.2f%% (%llu misses / %llu instructions)\n", miss_rate, (unsigned long long)total_miss, (unsigned long long)total_inst);
-                report_add_metric(subsystem, "hw_cache_miss_rate", miss_rate, "%");
+                pr_info("L1D Cache Miss Rate: %.2f%% (%llu misses / %llu instructions)\n", miss_rate, (unsigned long long)total_miss, (unsigned long long)total_inst);
+                report_add_metric(subsystem, "hw_l1_miss_rate", miss_rate, "%");
                 
+                if (total_l2 > 0) {
+                    double l2_miss_rate = (double)total_l2 * 100.0 / total_inst;
+                    pr_info("L2 Cache Miss Rate: %.2f%% (%llu misses / %llu instructions)\n", l2_miss_rate, (unsigned long long)total_l2, (unsigned long long)total_inst);
+                    report_add_metric(subsystem, "hw_l2_miss_rate", l2_miss_rate, "%");
+                }
+
+                if (total_branch > 0) {
+                    double branch_miss_rate = (double)total_branch * 100.0 / total_inst;
+                    pr_info("Branch Misprediction Rate: %.2f%% (%llu misses / %llu instructions)\n", branch_miss_rate, (unsigned long long)total_branch, (unsigned long long)total_inst);
+                    report_add_metric(subsystem, "hw_branch_miss_rate", branch_miss_rate, "%");
+                    if (branch_miss_rate > 2.0) {
+                        pr_info("💡 KERNEL PATCH ADVICE (%s): High branch mispredictions. Reorganize code paths, use likely()/unlikely() macros, or avoid unpredictable branches.\n", subsystem);
+                    }
+                }
+
+                if (total_dtlb > 0) {
+                    double tlb_miss_rate = (double)total_dtlb * 100.0 / total_inst;
+                    pr_info("Data TLB Miss Rate: %.2f%% (%llu misses / %llu instructions)\n", tlb_miss_rate, (unsigned long long)total_dtlb, (unsigned long long)total_inst);
+                    report_add_metric(subsystem, "hw_tlb_miss_rate", tlb_miss_rate, "%");
+                    if (tlb_miss_rate > 1.0) {
+                        pr_info("💡 KERNEL PATCH ADVICE (%s): High Data TLB misses detected. The CPU is struggling with page table walks. Consider using HugePages.\n", subsystem);
+                    }
+                }
+
                 if (miss_rate > 5.0) {
-                    pr_info("💡 KERNEL PATCH ADVICE (%s): High hardware cache miss rate. CPU is stalling on memory. Optimize data structures for cache locality.\n", subsystem);
+                    pr_info("💡 KERNEL PATCH ADVICE (%s): High L1 hardware cache miss rate. CPU is stalling on memory. Optimize data structures for cache locality.\n", subsystem);
                     report_add_heuristic(subsystem, "High hardware cache miss rate. Optimize data structures for cache locality.");
                 }
             }
