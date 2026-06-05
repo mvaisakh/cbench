@@ -16,6 +16,7 @@
 #include "bench_futex.h"
 #include "bench_crypto.h"
 #include "bench_zero.h"
+#include "bench_rcu.h"
 #include "report.h"
 #include "sysinfo.h"
 #include "telemetry.h"
@@ -39,6 +40,7 @@ static void print_usage(const char *prog) {
     pr_info("  -f       Run Futex contention benchmark\n");
     pr_info("  -c       Run AF_ALG Crypto benchmark\n");
     pr_info("  -z       Run /dev/zero benchmark\n");
+    pr_info("  -u       Run Kernel VFS RCU stress benchmark\n");
     pr_info("  -j       Output JSON report at the end\n");
     pr_info("  -h       Print this help\n");
 }
@@ -48,9 +50,10 @@ int main(int argc, char **argv)
     int opt;
     int run_all = 0, run_syscall = 0, run_sched = 0, run_mem = 0, run_io = 0;
     int run_rng = 0, run_net = 0, run_futex = 0, run_crypto = 0, run_zero = 0;
+    int run_rcu = 0;
     int output_json = 0;
 
-    while ((opt = getopt(argc, argv, "ad:t:sSmijrnfczh")) != -1) {
+    while ((opt = getopt(argc, argv, "ad:t:sSmijrnfczuh")) != -1) {
         switch (opt) {
             case 'a': run_all = 1; break;
             case 'd': benchmark_duration_sec = atoi(optarg); break;
@@ -64,6 +67,7 @@ int main(int argc, char **argv)
             case 'f': run_futex = 1; break;
             case 'c': run_crypto = 1; break;
             case 'z': run_zero = 1; break;
+            case 'u': run_rcu = 1; break;
             case 'j': output_json = 1; break;
             case 'h': print_usage(argv[0]); return 0;
             default: print_usage(argv[0]); return 1;
@@ -72,11 +76,11 @@ int main(int argc, char **argv)
 
     if (run_all) {
         run_syscall = run_sched = run_mem = run_io = 1;
-        run_rng = run_net = run_futex = run_crypto = run_zero = 1;
+        run_rng = run_net = run_futex = run_crypto = run_zero = run_rcu = 1;
     }
 
     if (!run_all && !run_syscall && !run_sched && !run_mem && !run_io && 
-        !run_rng && !run_net && !run_futex && !run_crypto && !run_zero) {
+        !run_rng && !run_net && !run_futex && !run_crypto && !run_zero && !run_rcu) {
         pr_info("No benchmarks selected. Use -a to run all or -h for help.\n");
         return 0;
     }
@@ -151,8 +155,15 @@ int main(int argc, char **argv)
         run_zero_benchmark(num_threads, benchmark_duration_sec);
         telemetry_stop("zero");
     }
+    
+    if (run_rcu) {
+        pr_info("\n================================================================================\n");
+        telemetry_start();
+        run_rcu_benchmark(num_threads, benchmark_duration_sec);
+        telemetry_stop("rcu");
+    }
 
-    pr_info("Run complete.\n");
+    pr_info("\nRun complete.\n");
 
     if (output_json) {
         report_print_json();

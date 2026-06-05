@@ -92,10 +92,10 @@ void hwperf_init(void) {
         if (sigsetjmp(sigill_env, 1) == 0) {
             read_pmu_cycles();
             mode_pmu_mrs = 1;
-            pr_info("Hardware Perf: AMU trapped. PMU direct read ENABLED!\n");
+            pr_info("Hardware Perf: PMU direct read ENABLED!\n");
         } else {
             mode_perf = 1;
-            pr_info("Hardware Perf: Direct assembly reads blocked (SIGILL). Falling back to perf_event_open raw IDs.\n");
+            pr_info("Hardware Perf: Android security restrictions detected. Using perf_event_open hardware telemetry.\n");
         }
     }
     sigaction(SIGILL, &old_sa, NULL);

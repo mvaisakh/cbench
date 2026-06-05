@@ -45,11 +45,11 @@ static void *sched_worker(void *arg)
         uint64_t end_time = get_time_ns() + ((uint64_t)benchmark_duration_sec * 1000000000ULL);
         while (get_time_ns() < end_time) {
             for (i = 0; i < 1000; i++) {
-                if (read(p1[0], &msg, 1) != 1) exit(1);
-                if (write(p2[1], &msg, 1) != 1) exit(1);
+                if (read(p1[0], &msg, 1) != 1) _exit(1);
+                if (write(p2[1], &msg, 1) != 1) _exit(1);
             }
         }
-        exit(0);
+        _exit(0);
     } else {
         /* Parent */
         uint64_t end_time = get_time_ns() + ((uint64_t)benchmark_duration_sec * 1000000000ULL);
