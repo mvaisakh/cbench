@@ -45,7 +45,11 @@ static struct ip_count samples[MAX_SAMPLES];
 static int num_samples = 0;
 
 static int ksym_cmp(const void *a, const void *b) {
-    return ((struct ksym *)a)->addr > ((struct ksym *)b)->addr ? 1 : -1;
+    uint64_t A = ((struct ksym *)a)->addr;
+    uint64_t B = ((struct ksym *)b)->addr;
+    if (A < B) return -1;
+    if (A > B) return 1;
+    return 0;
 }
 
 static void load_kallsyms(void) {
@@ -84,7 +88,11 @@ static const char *resolve_ip(uint64_t ip) {
     while (l <= r) {
         int m = l + (r - l) / 2;
         if (ksyms[m].addr <= ip && (m == num_ksyms - 1 || ksyms[m+1].addr > ip)) {
-            return ksyms[m].name;
+            if (ip - ksyms[m].addr < 1048576) {
+                return ksyms[m].name;
+            } else {
+                return "[unmapped_proprietary_code]";
+            }
         }
         if (ksyms[m].addr < ip) l = m + 1;
         else r = m - 1;

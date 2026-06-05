@@ -127,9 +127,16 @@ double energy_get_joules(void)
     } else if (use_battery_current) {
         /* Approximate using average current over the elapsed duration */
         double duration_sec = (double)(stop_time_ns - start_time_ns) / 1000000000.0;
-        uint64_t avg_current_ua = (start_energy_val + stop_energy_val) / 2;
+        
+        int64_t start_c = (int64_t)start_energy_val;
+        int64_t stop_c  = (int64_t)stop_energy_val;
+        if (start_c < 0) start_c = -start_c;
+        if (stop_c < 0) stop_c = -stop_c;
+        
+        uint64_t avg_current_ua = (start_c + stop_c) / 2;
         uint64_t voltage = read_battery_voltage_now();
         if (voltage == 0) voltage = 3800000;
+        
         double amps = (double)avg_current_ua / 1000000.0;
         double volts = (double)voltage / 1000000.0;
         return amps * volts * duration_sec;
