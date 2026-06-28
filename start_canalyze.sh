@@ -6,8 +6,8 @@ echo "Starting CAnalyze Web Server..."
 echo "Running on http://localhost:8080"
 echo "Press Ctrl+C to stop."
 
-# Change to the directory where the script is located
-cd "$(dirname "$0")"
+# Change to the canalyze directory
+cd "$(dirname "$0")/canalyze"
 
 # Start the python HTTP server
 python3 -m http.server 8080

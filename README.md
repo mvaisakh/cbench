@@ -82,9 +82,9 @@ sudo ./cbench -a -d 15 -j
    # Apply kernel patch, reboot...
    sudo ./cbench -a -d 15 -j > after.json
    ```
-2. Navigate to the `canalyze` directory and start the local HTTP server using the provided scripts:
-   - On **Linux/macOS**: Run `./start.sh`
-   - On **Windows**: Double-click `start.bat`
+2. Start the local HTTP server from the root of the repository using the provided scripts:
+   - On **Linux/macOS**: Run `./start_canalyze.sh`
+   - On **Windows**: Double-click `start_canalyze.bat`
 3. Open your web browser and navigate to `http://localhost:8080`.
 4. Drag and drop `before.json` and `after.json` into the respective drop zones and click **Analyze Benchmarks**.
 

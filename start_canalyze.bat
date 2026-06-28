@@ -6,8 +6,8 @@ echo Starting CAnalyze Web Server...
 echo Running on http://localhost:8080
 echo Press Ctrl+C to stop.
 
-REM Change to the directory where the batch file is located
-cd /d "%~dp0"
+REM Change to the canalyze directory
+cd /d "%~dp0canalyze"
 
 REM Start the python HTTP server
 python -m http.server 8080
