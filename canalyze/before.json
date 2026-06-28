@@ -1,0 +1,15 @@
+{
+  "sysinfo": {
+    "Kernel Version": "Linux 4.14.186-perf+",
+    "Architecture": "aarch64",
+    "CPUs": "8"
+  },
+  "metrics": [
+    { "subsystem": "syscall", "metric": "gettid_throughput", "value": 1500000.50, "unit": "ops/sec" },
+    { "subsystem": "mem", "metric": "bandwidth", "value": 12500.00, "unit": "MB/s" },
+    { "subsystem": "sched", "metric": "context_switch_time", "value": 1500.00, "unit": "ns" }
+  ],
+  "heuristics": [
+    { "subsystem": "sched", "message": "High spinlock contention detected. Consider replacing these locks with RCU or lockless data structures." }
+  ]
+}

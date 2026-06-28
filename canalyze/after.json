@@ -1,0 +1,13 @@
+{
+  "sysinfo": {
+    "Kernel Version": "Linux 4.14.186-perf+ (Optimized)",
+    "Architecture": "aarch64",
+    "CPUs": "8"
+  },
+  "metrics": [
+    { "subsystem": "syscall", "metric": "gettid_throughput", "value": 1700000.25, "unit": "ops/sec" },
+    { "subsystem": "mem", "metric": "bandwidth", "value": 12300.00, "unit": "MB/s" },
+    { "subsystem": "sched", "metric": "context_switch_time", "value": 1200.00, "unit": "ns" }
+  ],
+  "heuristics": []
+}

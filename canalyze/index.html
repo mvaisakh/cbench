@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAnalyze - Cerium Benchmark Analyzer</title>
+    <!-- Fonts and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="app-bar">
+        <div class="app-bar-content">
+            <span class="material-icons-round logo-icon">analytics</span>
+            <h1 class="app-title">CAnalyze <span class="badge">BETA</span></h1>
+        </div>
+        <div class="actions">
+            <button id="resetBtn" class="btn btn-icon" title="Reset Analysis"><span class="material-icons-round">refresh</span></button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Upload Section -->
+        <section id="uploadSection" class="upload-section">
+            <div class="drop-zone-container">
+                <div id="dropBefore" class="drop-zone">
+                    <span class="material-icons-round drop-icon">upload_file</span>
+                    <h3>Before JSON</h3>
+                    <p>Drag & drop or click to select</p>
+                    <input type="file" id="fileBefore" accept=".json" hidden>
+                    <div id="statusBefore" class="status-chip empty">Waiting...</div>
+                </div>
+                <div class="vs-badge">VS</div>
+                <div id="dropAfter" class="drop-zone">
+                    <span class="material-icons-round drop-icon">upload_file</span>
+                    <h3>After JSON</h3>
+                    <p>Drag & drop or click to select</p>
+                    <input type="file" id="fileAfter" accept=".json" hidden>
+                    <div id="statusAfter" class="status-chip empty">Waiting...</div>
+                </div>
+            </div>
+            <button id="analyzeBtn" class="btn btn-primary" disabled>Analyze Benchmarks</button>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboardSection" class="dashboard-section hidden">
+            <!-- System Info Comparison -->
+            <div class="sysinfo-card card">
+                <h2>System Information</h2>
+                <div id="sysinfoContent" class="sysinfo-grid"></div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-grid">
+                <div class="summary-card stat-improved">
+                    <span class="material-icons-round stat-icon">trending_up</span>
+                    <div class="stat-content">
+                        <h4>Improvements</h4>
+                        <h2 id="totalImprovements">0</h2>
+                    </div>
+                </div>
+                <div class="summary-card stat-regressed">
+                    <span class="material-icons-round stat-icon">trending_down</span>
+                    <div class="stat-content">
+                        <h4>Regressions</h4>
+                        <h2 id="totalRegressions">0</h2>
+                    </div>
+                </div>
+                <div class="summary-card stat-neutral">
+                    <span class="material-icons-round stat-icon">horizontal_rule</span>
+                    <div class="stat-content">
+                        <h4>Unchanged</h4>
+                        <h2 id="totalUnchanged">0</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics Table -->
+            <div class="metrics-card card">
+                <h2>Metrics Comparison</h2>
+                <div class="table-container">
+                    <table id="metricsTable">
+                        <thead>
+                            <tr>
+                                <th>Subsystem</th>
+                                <th>Metric</th>
+                                <th>Before</th>
+                                <th>After</th>
+                                <th>Unit</th>
+                                <th>Delta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metricsBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Heuristics -->
+            <div class="heuristics-container">
+                <div class="heuristic-card card before-heuristics">
+                    <h2><span class="material-icons-round">lightbulb</span> Before Advice</h2>
+                    <ul id="heuristicsBeforeList" class="heuristic-list"></ul>
+                </div>
+                <div class="heuristic-card card after-heuristics">
+                    <h2><span class="material-icons-round">lightbulb</span> After Advice</h2>
+                    <ul id="heuristicsAfterList" class="heuristic-list"></ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
