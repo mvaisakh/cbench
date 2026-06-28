@@ -49,7 +49,11 @@ int run_syscall_benchmark(void)
 
     threads = malloc(sizeof(pthread_t) * num_threads);
     args = malloc(sizeof(struct syscall_worker_args) * num_threads);
-    if (!threads || !args) return -1;
+    if (!threads || !args) {
+        if (threads) free(threads);
+        if (args) free(args);
+        return -1;
+    }
 
     start = get_time_ns();
 
