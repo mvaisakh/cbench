@@ -42,6 +42,11 @@ static void *zero_worker(void *arg) {
 void run_zero_benchmark(int num_threads, int duration) {
     pthread_t *threads = malloc(sizeof(pthread_t) * num_threads);
     struct zero_args *args = malloc(sizeof(struct zero_args) * num_threads);
+    if (!threads || !args) {
+        if (threads) free(threads);
+        if (args) free(args);
+        return;
+    }
     
     pr_info("Running Zero Subsystem Benchmark (/dev/zero) across %d thread(s) for %d seconds...\n", num_threads, duration);
     

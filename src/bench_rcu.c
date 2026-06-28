@@ -39,6 +39,11 @@ int run_rcu_benchmark(int threads, int duration_sec)
 {
     pthread_t *pids = malloc(sizeof(pthread_t) * threads);
     struct rcu_worker_args *args = malloc(sizeof(struct rcu_worker_args) * threads);
+    if (!pids || !args) {
+        if (pids) free(pids);
+        if (args) free(args);
+        return -1;
+    }
     
     pr_info("Running Kernel VFS RCU Stress Benchmark across %d thread(s) for %d seconds...\n", threads, duration_sec);
     uint64_t start = get_time_ns();

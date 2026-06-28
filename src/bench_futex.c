@@ -43,6 +43,11 @@ static void *futex_worker(void *arg) {
 void run_futex_benchmark(int num_threads, int duration) {
     pthread_t *threads = malloc(sizeof(pthread_t) * num_threads);
     struct futex_args *args = malloc(sizeof(struct futex_args) * num_threads);
+    if (!threads || !args) {
+        if (threads) free(threads);
+        if (args) free(args);
+        return;
+    }
     
     pr_info("Running Futex Contention Benchmark (SYS_futex) across %d thread(s) for %d seconds...\n", num_threads, duration);
     

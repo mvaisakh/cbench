@@ -72,6 +72,11 @@ static void *crypto_worker(void *arg) {
 void run_crypto_benchmark(int num_threads, int duration) {
     pthread_t *threads = malloc(sizeof(pthread_t) * num_threads);
     struct crypto_args *args = malloc(sizeof(struct crypto_args) * num_threads);
+    if (!threads || !args) {
+        if (threads) free(threads);
+        if (args) free(args);
+        return;
+    }
     
     pr_info("Running Crypto Subsystem Benchmark (AF_ALG sha256) across %d thread(s) for %d seconds...\n", num_threads, duration);
     

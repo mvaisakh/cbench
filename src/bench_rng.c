@@ -42,6 +42,11 @@ static void *rng_worker(void *arg) {
 void run_rng_benchmark(int num_threads, int duration) {
     pthread_t *threads = malloc(sizeof(pthread_t) * num_threads);
     struct rng_args *args = malloc(sizeof(struct rng_args) * num_threads);
+    if (!threads || !args) {
+        if (threads) free(threads);
+        if (args) free(args);
+        return;
+    }
     
     pr_info("Running RNG Subsystem Benchmark (/dev/urandom) across %d thread(s) for %d seconds...\n", num_threads, duration);
     
