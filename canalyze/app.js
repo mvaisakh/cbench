@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let jsonBefore = null;
     let jsonAfter = null;
+    let radarChartInstance = null;
 
     // Helper: Determine if metric improvement is positive or negative change
     // Higher is better for: ops/sec, MB/s, ops/J, MB/J
@@ -100,6 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
         analyzeBtn.disabled = true;
         dashboardSection.classList.add('hidden');
         uploadSection.classList.remove('hidden');
+        
+        if (radarChartInstance) {
+            radarChartInstance.destroy();
+            radarChartInstance = null;
+        }
     });
 
     analyzeBtn.addEventListener('click', () => {
@@ -145,6 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const allMetricKeys = new Set([...Object.keys(metricsB), ...Object.keys(metricsA)]);
 
+        const radarLabels = [];
+        const radarDataBefore = [];
+        const radarDataAfter = [];
+
         allMetricKeys.forEach(key => {
             const mb = metricsB[key];
             const ma = metricsA[key];
@@ -178,6 +188,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         deltaClass = 'delta-negative';
                         deltaStr = (pct > 0 ? '+' : '') + pct.toFixed(2) + '%';
                     }
+                }
+                
+                // Radar Chart Data Prep
+                if (valB > 0 && valA > 0) {
+                    radarLabels.push(`${subsystem} (${metricName})`);
+                    radarDataBefore.push(100); // Baseline
+                    
+                    const higherBetter = isHigherBetter(unit);
+                    let normalizedAfter = 100;
+                    if (higherBetter) {
+                        normalizedAfter = (valA / valB) * 100;
+                    } else {
+                        normalizedAfter = (valB / valA) * 100;
+                    }
+                    radarDataAfter.push(normalizedAfter);
                 }
             }
 
@@ -216,5 +241,53 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!jsonAfter.heuristics || jsonAfter.heuristics.length === 0) {
             hAList.innerHTML = `<li><span class="material-icons-round">check_circle</span> No bottlenecks detected.</li>`;
         }
+
+        // Render Radar Chart
+        if (radarChartInstance) {
+            radarChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        radarChartInstance = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: radarLabels,
+                datasets: [
+                    {
+                        label: 'Before (Baseline = 100%)',
+                        data: radarDataBefore,
+                        backgroundColor: 'rgba(154, 160, 166, 0.2)',
+                        borderColor: 'rgba(154, 160, 166, 1)',
+                        pointBackgroundColor: 'rgba(154, 160, 166, 1)',
+                        borderWidth: 2,
+                    },
+                    {
+                        label: 'After (Relative Performance)',
+                        data: radarDataAfter,
+                        backgroundColor: 'rgba(168, 199, 250, 0.4)',
+                        borderColor: 'rgba(168, 199, 250, 1)',
+                        pointBackgroundColor: 'rgba(168, 199, 250, 1)',
+                        borderWidth: 2,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        pointLabels: { color: 'rgba(255, 255, 255, 0.7)', font: { family: 'Inter', size: 11 } },
+                        ticks: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: 'rgba(255, 255, 255, 0.9)', font: { family: 'Inter' } }
+                    }
+                }
+            }
+        });
     }
 });
