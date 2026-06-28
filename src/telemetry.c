@@ -9,6 +9,7 @@
 #include "softirq.h"
 #include "vmstat.h"
 #include "hwperf.h"
+#include "dvfs.h"
 
 void telemetry_init(void) {
     cpuidle_init();
@@ -18,6 +19,7 @@ void telemetry_init(void) {
     softirq_init();
     vmstat_init();
     hwperf_init();
+    dvfs_init();
 }
 
 void telemetry_start(void) {
@@ -28,6 +30,7 @@ void telemetry_start(void) {
     softirq_start();
     vmstat_start();
     hwperf_start();
+    dvfs_start();
 }
 
 void telemetry_stop(const char *subsystem) {
@@ -36,6 +39,7 @@ void telemetry_stop(const char *subsystem) {
     softirq_stop(subsystem);
     thermal_stop(subsystem);
     profiler_stop(subsystem);
+    dvfs_stop(subsystem);
     energy_stop();
     cpuidle_stop(subsystem);
 }
