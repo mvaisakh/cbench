@@ -9,6 +9,7 @@
 - **Native Kernel Profiler**: Uses `perf_event_open` and `/proc/kallsyms` to sample and pinpoint the exact C-functions dominating CPU time.
 - **Symbolic Heuristics Engine**: Scans kernel profiler hotspots against known anti-patterns to provide direct patching advice (e.g., detecting `_raw_spin_lock` and suggesting RCU, or detecting `clear_page` and suggesting THP).
 - **JSON Telemetry Export**: Dumps all metrics into a structured JSON file for CI/CD dashboard tracking.
+- **CAnalyze GUI**: A built-in Material Design web application to visually compare benchmark JSON outputs, flag performance regressions, and present kernel patching heuristics.
 
 ## Benchmarks
 1. **Syscall Latency (`SYS_gettid`)**: Measures raw context-switching overhead across the User/Kernel boundary.
@@ -66,6 +67,30 @@ sudo ./cbench -a -d 15 -j
 - `-c` : Run only the Kernel Crypto API (`AF_ALG`) benchmark.
 - `-z` : Run only the Zero / Copy-to-User benchmark (`/dev/zero`).
 - `-j` : Print structured JSON metrics at the end of the run.
+
+---
+
+## 📊 CAnalyze: Visual Benchmark Comparison
+
+`cbench` includes **CAnalyze**, a sleek, cross-platform Single Page Web Application (SPA) designed with Material Design 3. It allows kernel developers to easily compare the JSON telemetry outputs of two benchmark runs (e.g., "Before" and "After" a kernel patch) to instantly visualize performance improvements and regressions.
+
+### Using CAnalyze
+
+1. Run your benchmarks before and after your kernel changes, saving the JSON output:
+   ```bash
+   sudo ./cbench -a -d 15 -j > before.json
+   # Apply kernel patch, reboot...
+   sudo ./cbench -a -d 15 -j > after.json
+   ```
+2. Navigate to the `canalyze` directory and start a local HTTP server:
+   ```bash
+   cd canalyze
+   python3 -m http.server 8080
+   ```
+3. Open your web browser and navigate to `http://localhost:8080`.
+4. Drag and drop `before.json` and `after.json` into the respective drop zones and click **Analyze Benchmarks**.
+
+CAnalyze will automatically align metrics, calculate percentage deltas, color-code regressions (red) and improvements (green), and display any heuristics or patching advice side-by-side.
 
 ---
 
