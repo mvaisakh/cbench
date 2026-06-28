@@ -169,5 +169,7 @@ int main(int argc, char **argv)
         report_print_json();
     }
 
+    telemetry_deinit();
+
     return 0;
 }

@@ -7,5 +7,6 @@
 void profiler_init(void);
 void profiler_start(void);
 void profiler_stop(const char *subsystem);
+void profiler_deinit(void);
 
 #endif /* _CBENCH_PROFILER_H */

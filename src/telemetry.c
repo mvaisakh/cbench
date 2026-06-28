@@ -39,3 +39,7 @@ void telemetry_stop(const char *subsystem) {
     energy_stop();
     cpuidle_stop(subsystem);
 }
+
+void telemetry_deinit(void) {
+    profiler_deinit();
+}

@@ -278,3 +278,16 @@ void profiler_stop(const char *subsystem) {
         report_add_heuristic(subsystem, "Filesystem bottleneck. Tune mount options or adjust VFS caches.");
     }
 }
+
+void profiler_deinit(void) {
+    if (ksyms) {
+        free(ksyms);
+        ksyms = NULL;
+    }
+    if (ctxs) {
+        free(ctxs);
+        ctxs = NULL;
+    }
+    num_ksyms = 0;
+    enabled = 0;
+}

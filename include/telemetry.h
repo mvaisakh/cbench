@@ -7,5 +7,6 @@
 void telemetry_init(void);
 void telemetry_start(void);
 void telemetry_stop(const char *subsystem);
+void telemetry_deinit(void);
 
 #endif /* _CBENCH_TELEMETRY_H */
