@@ -53,6 +53,34 @@
                 <div id="sysinfoContent" class="sysinfo-grid"></div>
             </div>
 
+            <!-- Cerium Score Dashboard -->
+            <div class="score-dashboard">
+                <div class="score-card before-score-card">
+                    <div class="score-header">Before (Baseline)</div>
+                    <div class="total-score" id="scoreBefore">--</div>
+                    <div class="sub-scores">
+                        <div class="sub-score"><span>Compute</span><strong id="compBefore">--</strong></div>
+                        <div class="sub-score"><span>Memory & I/O</span><strong id="memBefore">--</strong></div>
+                        <div class="sub-score"><span>System & Crypto</span><strong id="sysBefore">--</strong></div>
+                    </div>
+                </div>
+                
+                <div class="score-vs-container">
+                    <div class="vs-circle"><span class="material-icons-round">bolt</span></div>
+                    <div id="scoreDelta" class="score-delta delta-neutral">--</div>
+                </div>
+
+                <div class="score-card after-score-card">
+                    <div class="score-header">After (Current)</div>
+                    <div class="total-score" id="scoreAfter">--</div>
+                    <div class="sub-scores">
+                        <div class="sub-score"><span>Compute</span><strong id="compAfter">--</strong></div>
+                        <div class="sub-score"><span>Memory & I/O</span><strong id="memAfter">--</strong></div>
+                        <div class="sub-score"><span>System & Crypto</span><strong id="sysAfter">--</strong></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Summary Cards -->
             <div class="summary-grid">
                 <div class="summary-card stat-improved">

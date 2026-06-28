@@ -131,6 +131,99 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 
+        // Calculate Scores
+        function calculateScores(metricsArray) {
+            let compute = 0;
+            let memio = 0;
+            let sys = 0;
+
+            metricsArray.forEach(m => {
+                const val = m.value;
+                if (!val || val <= 0) return;
+
+                switch (m.subsystem) {
+                    case 'syscall':
+                        compute += (val / 1000); // Usually 5M ops/s -> 5000
+                        break;
+                    case 'sched':
+                        compute += (val / 100); // Usually 1M ops/s -> 10000
+                        break;
+                    case 'futex':
+                        compute += (val / 1000); // Usually 3M ops/s -> 3000
+                        break;
+                    case 'eas':
+                        if (m.metric.includes('throughput')) compute += (val / 10);
+                        break;
+                    case 'neon':
+                        if (m.metric.includes('throughput')) compute += (val / 1000);
+                        break;
+                    
+                    case 'mem':
+                        memio += val; // Usually 20,000 MB/s -> 20000
+                        break;
+                    case 'io':
+                        if (m.metric.includes('write')) memio += (val * 10); // Usually 500 MB/s -> 5000
+                        else memio += val;
+                        break;
+                    case 'zram':
+                        memio += (val * 5);
+                        break;
+                    case 'sqlite':
+                        memio += (val * 10);
+                        break;
+                    case 'zero':
+                        memio += (val);
+                        break;
+                    
+                    case 'rng':
+                        sys += (val * 10);
+                        break;
+                    case 'net':
+                        sys += (val / 100); // UDP ops/s
+                        break;
+                    case 'crypto':
+                        sys += (val / 100);
+                        break;
+                    case 'rcu':
+                        sys += (val / 100);
+                        break;
+                }
+            });
+
+            return {
+                compute: Math.round(compute),
+                memio: Math.round(memio),
+                sys: Math.round(sys),
+                total: Math.round(compute + memio + sys)
+            };
+        }
+
+        const scoresBefore = calculateScores(jsonBefore.metrics || []);
+        const scoresAfter = calculateScores(jsonAfter.metrics || []);
+
+        document.getElementById('scoreBefore').textContent = scoresBefore.total.toLocaleString();
+        document.getElementById('compBefore').textContent = scoresBefore.compute.toLocaleString();
+        document.getElementById('memBefore').textContent = scoresBefore.memio.toLocaleString();
+        document.getElementById('sysBefore').textContent = scoresBefore.sys.toLocaleString();
+
+        document.getElementById('scoreAfter').textContent = scoresAfter.total.toLocaleString();
+        document.getElementById('compAfter').textContent = scoresAfter.compute.toLocaleString();
+        document.getElementById('memAfter').textContent = scoresAfter.memio.toLocaleString();
+        document.getElementById('sysAfter').textContent = scoresAfter.sys.toLocaleString();
+
+        const scoreDeltaEl = document.getElementById('scoreDelta');
+        if (scoresBefore.total > 0) {
+            const diff = scoresAfter.total - scoresBefore.total;
+            const pct = (diff / scoresBefore.total) * 100;
+            scoreDeltaEl.textContent = (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
+            if (pct > 0.5) scoreDeltaEl.className = 'score-delta delta-positive';
+            else if (pct < -0.5) scoreDeltaEl.className = 'score-delta delta-negative';
+            else scoreDeltaEl.className = 'score-delta delta-neutral';
+        } else {
+            scoreDeltaEl.textContent = 'N/A';
+            scoreDeltaEl.className = 'score-delta delta-neutral';
+        }
+
         // 2. Metrics
         const tbody = document.getElementById('metricsBody');
         tbody.innerHTML = '';
