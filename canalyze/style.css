@@ -518,6 +518,55 @@ tbody tr:hover {
     max-width: 700px;
 }
 
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.chart-header h2 {
+    margin-bottom: 0;
+}
+
+.filter-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-container label {
+    font-size: 0.85rem;
+    color: var(--neutral-color);
+    font-weight: 500;
+}
+
+.select-input {
+    background-color: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-background);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: all var(--transition-speed) ease;
+}
+
+.select-input:hover {
+    border-color: var(--md-sys-color-primary);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.select-input:focus {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px rgba(168, 199, 250, 0.2);
+}
+
 .canvas-wrapper {
     position: relative;
     height: 400px;

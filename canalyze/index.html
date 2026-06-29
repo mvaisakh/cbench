@@ -109,7 +109,16 @@
             <!-- Charts Section -->
             <div class="charts-container">
                 <div class="chart-card card">
-                    <h2>Performance Radar</h2>
+                    <div class="chart-header">
+                        <h2>Performance Radar</h2>
+                        <div class="filter-container">
+                            <label for="radarFilter">View:</label>
+                            <select id="radarFilter" class="select-input">
+                                <option value="aggregate">All Subsystems (Aggregate)</option>
+                                <option value="all">All Metrics (Detailed)</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="canvas-wrapper">
                         <canvas id="radarChart"></canvas>
                     </div>
