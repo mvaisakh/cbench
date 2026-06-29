@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let jsonBefore = null;
     let jsonAfter = null;
     let radarChartInstance = null;
+    let parsedMetrics = [];
 
     // Helper: Determine if metric improvement is positive or negative change
     // Higher is better for: ops/sec, MB/s, ops/J, MB/J
@@ -89,6 +90,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.files[0]) handleFile(e.target.files[0], false);
     });
 
+    const radarFilter = document.getElementById('radarFilter');
+    radarFilter.addEventListener('change', () => {
+        updateRadarChart(radarFilter.value);
+    });
+
     resetBtn.addEventListener('click', () => {
         jsonBefore = null;
         jsonAfter = null;
@@ -102,6 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         dashboardSection.classList.add('hidden');
         uploadSection.classList.remove('hidden');
         
+        radarFilter.value = 'aggregate';
+        
         if (radarChartInstance) {
             radarChartInstance.destroy();
             radarChartInstance = null;
@@ -113,6 +121,142 @@ document.addEventListener('DOMContentLoaded', () => {
         dashboardSection.classList.remove('hidden');
         renderAnalysis();
     });
+
+    function updateRadarChart(filterValue) {
+        let labels = [];
+        let dataBefore = [];
+        let dataAfter = [];
+
+        if (filterValue === 'aggregate') {
+            const groups = {};
+            parsedMetrics.forEach(m => {
+                if (!groups[m.subsystem]) {
+                    groups[m.subsystem] = [];
+                }
+                groups[m.subsystem].push(m.relativePerf);
+            });
+
+            Object.keys(groups).sort().forEach(sub => {
+                const values = groups[sub];
+                const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+                labels.push(sub);
+                dataBefore.push(100);
+                dataAfter.push(avg);
+            });
+        } else if (filterValue === 'all') {
+            parsedMetrics.forEach(m => {
+                labels.push([m.subsystem, m.metric]);
+                dataBefore.push(100);
+                dataAfter.push(m.relativePerf);
+            });
+        } else if (filterValue.startsWith('subsystem:')) {
+            const subName = filterValue.split(':')[1];
+            const filtered = parsedMetrics.filter(m => m.subsystem === subName);
+            filtered.forEach(m => {
+                labels.push(m.metric);
+                dataBefore.push(100);
+                dataAfter.push(m.relativePerf);
+            });
+        }
+
+        if (radarChartInstance) {
+            radarChartInstance.data.labels = labels;
+            radarChartInstance.data.datasets[0].data = dataBefore;
+            radarChartInstance.data.datasets[1].data = dataAfter;
+            radarChartInstance.update();
+        } else {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Before (Baseline = 100%)',
+                            data: dataBefore,
+                            backgroundColor: 'rgba(154, 160, 166, 0.08)',
+                            borderColor: 'rgba(154, 160, 166, 0.6)',
+                            pointBackgroundColor: 'rgba(154, 160, 166, 0.8)',
+                            pointBorderColor: 'rgba(154, 160, 166, 1)',
+                            borderWidth: 1.5,
+                        },
+                        {
+                            label: 'After (Relative Performance)',
+                            data: dataAfter,
+                            backgroundColor: 'rgba(168, 199, 250, 0.15)',
+                            borderColor: 'rgba(168, 199, 250, 0.85)',
+                            pointBackgroundColor: 'rgba(168, 199, 250, 1)',
+                            pointBorderColor: '#fff',
+                            borderWidth: 2,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 800,
+                        easing: 'easeOutQuart'
+                    },
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                            pointLabels: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                font: { family: 'Inter', size: 10, weight: '500' }
+                            },
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                font: { family: 'Inter', size: 12, weight: '500' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                            titleColor: '#fff',
+                            bodyColor: '#e3e3e3',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.r !== undefined) {
+                                        label += context.parsed.r.toFixed(1) + '%';
+                                    }
+                                    return label;
+                                },
+                                footer: function(tooltipItems) {
+                                    const filterVal = document.getElementById('radarFilter').value;
+                                    if (filterVal !== 'aggregate') return '';
+
+                                    const subsystem = tooltipItems[0].label;
+                                    const subMetrics = parsedMetrics.filter(m => m.subsystem === subsystem);
+
+                                    let lines = ['\nMetrics breakdown:'];
+                                    subMetrics.forEach(m => {
+                                        const pct = m.relativePerf - 100;
+                                        const sign = pct >= 0 ? '+' : '';
+                                        lines.push(`• ${m.metric}: ${sign}${pct.toFixed(1)}%`);
+                                    });
+                                    return lines.join('\n');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
 
     function renderAnalysis() {
         // 1. Sysinfo
@@ -244,9 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const allMetricKeys = new Set([...Object.keys(metricsB), ...Object.keys(metricsA)]);
 
-        const radarLabels = [];
-        const radarDataBefore = [];
-        const radarDataAfter = [];
+        parsedMetrics = [];
 
         allMetricKeys.forEach(key => {
             const mb = metricsB[key];
@@ -285,9 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Radar Chart Data Prep
                 if (valB > 0 && valA > 0) {
-                    radarLabels.push(`${subsystem} (${metricName})`);
-                    radarDataBefore.push(100); // Baseline
-                    
                     const higherBetter = isHigherBetter(unit);
                     let normalizedAfter = 100;
                     if (higherBetter) {
@@ -295,7 +434,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         normalizedAfter = (valB / valA) * 100;
                     }
-                    radarDataAfter.push(normalizedAfter);
+                    parsedMetrics.push({
+                        subsystem: subsystem,
+                        metric: metricName,
+                        unit: unit,
+                        valB: valB,
+                        valA: valA,
+                        relativePerf: normalizedAfter
+                    });
                 }
             }
 
@@ -314,6 +460,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('totalImprovements').textContent = improvements;
         document.getElementById('totalRegressions').textContent = regressions;
         document.getElementById('totalUnchanged').textContent = unchanged;
+
+        // Populate radar filter select options dynamically
+        const subsystemsSet = new Set(parsedMetrics.map(m => m.subsystem));
+        const uniqueSubsystems = Array.from(subsystemsSet).sort();
+        
+        radarFilter.innerHTML = `
+            <option value="aggregate">All Subsystems (Aggregate)</option>
+            <option value="all">All Metrics (Detailed)</option>
+        `;
+        uniqueSubsystems.forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = `subsystem:${sub}`;
+            opt.textContent = `Subsystem: ${sub}`;
+            radarFilter.appendChild(opt);
+        });
 
         // 3. Heuristics
         const hBList = document.getElementById('heuristicsBeforeList');
@@ -335,52 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hAList.innerHTML = `<li><span class="material-icons-round">check_circle</span> No bottlenecks detected.</li>`;
         }
 
-        // Render Radar Chart
-        if (radarChartInstance) {
-            radarChartInstance.destroy();
-        }
-
-        const ctx = document.getElementById('radarChart').getContext('2d');
-        radarChartInstance = new Chart(ctx, {
-            type: 'radar',
-            data: {
-                labels: radarLabels,
-                datasets: [
-                    {
-                        label: 'Before (Baseline = 100%)',
-                        data: radarDataBefore,
-                        backgroundColor: 'rgba(154, 160, 166, 0.2)',
-                        borderColor: 'rgba(154, 160, 166, 1)',
-                        pointBackgroundColor: 'rgba(154, 160, 166, 1)',
-                        borderWidth: 2,
-                    },
-                    {
-                        label: 'After (Relative Performance)',
-                        data: radarDataAfter,
-                        backgroundColor: 'rgba(168, 199, 250, 0.4)',
-                        borderColor: 'rgba(168, 199, 250, 1)',
-                        pointBackgroundColor: 'rgba(168, 199, 250, 1)',
-                        borderWidth: 2,
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    r: {
-                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                        pointLabels: { color: 'rgba(255, 255, 255, 0.7)', font: { family: 'Inter', size: 11 } },
-                        ticks: { display: false }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        labels: { color: 'rgba(255, 255, 255, 0.9)', font: { family: 'Inter' } }
-                    }
-                }
-            }
-        });
+        // Render Radar Chart with active selection
+        updateRadarChart(radarFilter.value);
     }
 });
