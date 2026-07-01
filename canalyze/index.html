@@ -18,148 +18,196 @@
             <h1 class="app-title">CAnalyze <span class="badge">BETA</span></h1>
         </div>
         <div class="actions">
-            <button id="resetBtn" class="btn btn-icon" title="Reset Analysis"><span class="material-icons-round">refresh</span></button>
+            <button id="importBtn" class="btn btn-secondary" title="Upload New Run">
+                <span class="material-icons-round">upload_file</span> Import Run
+            </button>
+            <button id="resetBtn" class="btn btn-icon" title="Reset/Clear Dashboard"><span class="material-icons-round">refresh</span></button>
         </div>
     </header>
 
-    <main class="container">
-        <!-- Upload Section -->
-        <section id="uploadSection" class="upload-section">
-            <div class="drop-zone-container">
-                <div id="dropBefore" class="drop-zone">
-                    <span class="material-icons-round drop-icon">upload_file</span>
-                    <h3>Before JSON</h3>
-                    <p>Drag & drop or click to select</p>
-                    <input type="file" id="fileBefore" accept=".json" hidden>
-                    <div id="statusBefore" class="status-chip empty">Waiting...</div>
-                </div>
-                <div class="vs-badge">VS</div>
-                <div id="dropAfter" class="drop-zone">
-                    <span class="material-icons-round drop-icon">upload_file</span>
-                    <h3>After JSON</h3>
-                    <p>Drag & drop or click to select</p>
-                    <input type="file" id="fileAfter" accept=".json" hidden>
-                    <div id="statusAfter" class="status-chip empty">Waiting...</div>
-                </div>
+    <div class="app-layout">
+        <!-- Sidebar for Run History -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Run History</h2>
+                <span class="history-count" id="historyCount">0 runs</span>
             </div>
-            <button id="analyzeBtn" class="btn btn-primary" disabled>Analyze Benchmarks</button>
-        </section>
-
-        <!-- Dashboard Section -->
-        <section id="dashboardSection" class="dashboard-section hidden">
-            <!-- System Info Comparison -->
-            <div class="sysinfo-card card">
-                <h2>System Information</h2>
-                <div id="sysinfoContent" class="sysinfo-grid"></div>
+            
+            <div class="history-list-wrapper">
+                <ul id="historyList" class="history-list">
+                    <!-- Populated by JS -->
+                    <li class="empty-history">No runs imported yet. Import a benchmark JSON file to get started.</li>
+                </ul>
             </div>
+        </aside>
 
-            <!-- Cerium Score Dashboard -->
-            <div class="score-dashboard">
-                <div class="score-card before-score-card">
-                    <div class="score-header">Before (Baseline)</div>
-                    <div class="total-score" id="scoreBefore">--</div>
-                    <div class="sub-scores">
-                        <div class="sub-score"><span>Compute</span><strong id="compBefore">--</strong></div>
-                        <div class="sub-score"><span>Memory & I/O</span><strong id="memBefore">--</strong></div>
-                        <div class="sub-score"><span>System & Crypto</span><strong id="sysBefore">--</strong></div>
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Drop/Upload Landing Zone when no run is active -->
+            <section id="landingSection" class="landing-section">
+                <div class="landing-card">
+                    <div id="mainDropZone" class="drop-zone main-drop">
+                        <span class="material-icons-round drop-icon">backup</span>
+                        <h2>Import Benchmark JSON</h2>
+                        <p>Drag & drop your benchmark results file here, or click to browse</p>
+                        <input type="file" id="mainFileInput" accept=".json" hidden>
                     </div>
-                </div>
-                
-                <div class="score-vs-container">
-                    <div class="vs-circle"><span class="material-icons-round">bolt</span></div>
-                    <div id="scoreDelta" class="score-delta delta-neutral">--</div>
-                </div>
-
-                <div class="score-card after-score-card">
-                    <div class="score-header">After (Current)</div>
-                    <div class="total-score" id="scoreAfter">--</div>
-                    <div class="sub-scores">
-                        <div class="sub-score"><span>Compute</span><strong id="compAfter">--</strong></div>
-                        <div class="sub-score"><span>Memory & I/O</span><strong id="memAfter">--</strong></div>
-                        <div class="sub-score"><span>System & Crypto</span><strong id="sysAfter">--</strong></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Summary Cards -->
-            <div class="summary-grid">
-                <div class="summary-card stat-improved">
-                    <span class="material-icons-round stat-icon">trending_up</span>
-                    <div class="stat-content">
-                        <h4>Improvements</h4>
-                        <h2 id="totalImprovements">0</h2>
-                    </div>
-                </div>
-                <div class="summary-card stat-regressed">
-                    <span class="material-icons-round stat-icon">trending_down</span>
-                    <div class="stat-content">
-                        <h4>Regressions</h4>
-                        <h2 id="totalRegressions">0</h2>
-                    </div>
-                </div>
-                <div class="summary-card stat-neutral">
-                    <span class="material-icons-round stat-icon">horizontal_rule</span>
-                    <div class="stat-content">
-                        <h4>Unchanged</h4>
-                        <h2 id="totalUnchanged">0</h2>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Charts Section -->
-            <div class="charts-container">
-                <div class="chart-card card">
-                    <div class="chart-header">
-                        <h2>Performance Radar</h2>
-                        <div class="filter-container">
-                            <label for="radarFilter">View:</label>
-                            <select id="radarFilter" class="select-input">
-                                <option value="aggregate">All Subsystems (Aggregate)</option>
-                                <option value="all">All Metrics (Detailed)</option>
-                            </select>
+                    
+                    <div class="sample-links">
+                        <p>Or load sample files to test:</p>
+                        <div class="sample-buttons">
+                            <button id="loadSampleBefore" class="btn btn-small">Before.json (Baseline)</button>
+                            <button id="loadSampleAfter" class="btn btn-small">After.json (Optimized)</button>
                         </div>
                     </div>
-                    <div class="canvas-wrapper">
-                        <canvas id="radarChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Dashboard Section -->
+            <section id="dashboardSection" class="dashboard-section hidden">
+                <!-- Dashboard Header (Active Run details & Comparison Selector) -->
+                <div class="dashboard-header card">
+                    <div class="active-run-info">
+                        <span class="label">Active Run</span>
+                        <div class="run-title-row">
+                            <h2 id="activeRunName">Run Name</h2>
+                            <button id="renameActiveBtn" class="btn btn-icon btn-small" title="Rename Run"><span class="material-icons-round">edit</span></button>
+                        </div>
+                        <p id="activeRunMeta" class="meta-info">aarch64 | 8 CPUs</p>
+                    </div>
+                    
+                    <div class="comparison-selector">
+                        <span class="label">Compare Mode</span>
+                        <div class="comparison-controls">
+                            <select id="compareRunSelect" class="select-input">
+                                <option value="">-- No Comparison (Single Run) --</option>
+                                <!-- Populated dynamically -->
+                            </select>
+                            <button id="uploadCompareBtn" class="btn btn-secondary btn-small" title="Upload file to compare">
+                                <span class="material-icons-round">add</span> Compare File
+                            </button>
+                            <input type="file" id="compareFileInput" accept=".json" hidden>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Metrics Table -->
-            <div class="metrics-card card">
-                <h2>Metrics Comparison</h2>
-                <div class="table-container">
-                    <table id="metricsTable">
-                        <thead>
-                            <tr>
-                                <th>Subsystem</th>
-                                <th>Metric</th>
-                                <th>Before</th>
-                                <th>After</th>
-                                <th>Unit</th>
-                                <th>Delta</th>
-                            </tr>
-                        </thead>
-                        <tbody id="metricsBody">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                <!-- Score Dashboard (Single Run or Comparison) -->
+                <div class="score-dashboard" id="scoreDashboard">
+                    <!-- Left/Current Score Card -->
+                    <div class="score-card main-score-card">
+                        <div class="score-header" id="scoreHeaderLeft">Benchmark Score</div>
+                        <div class="total-score" id="scoreLeft">--</div>
+                        <div class="sub-scores">
+                            <div class="sub-score"><span>Compute</span><strong id="compLeft">--</strong></div>
+                            <div class="sub-score"><span>Memory & I/O</span><strong id="memLeft">--</strong></div>
+                            <div class="sub-score"><span>System & Crypto</span><strong id="sysLeft">--</strong></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Middle Delta Indicator (Shown only in Comparison Mode) -->
+                    <div class="score-vs-container hidden" id="comparisonVS">
+                        <div class="vs-circle"><span class="material-icons-round">bolt</span></div>
+                        <div id="scoreDelta" class="score-delta delta-neutral">--</div>
+                    </div>
 
-            <!-- Heuristics -->
-            <div class="heuristics-container">
-                <div class="heuristic-card card before-heuristics">
-                    <h2><span class="material-icons-round">lightbulb</span> Before Advice</h2>
-                    <ul id="heuristicsBeforeList" class="heuristic-list"></ul>
+                    <!-- Right/Baseline Score Card (Shown only in Comparison Mode) -->
+                    <div class="score-card baseline-score-card hidden" id="comparisonScoreCard">
+                        <div class="score-header">Baseline Score</div>
+                        <div class="total-score" id="scoreBaseline">--</div>
+                        <div class="sub-scores">
+                            <div class="sub-score"><span>Compute</span><strong id="compBaseline">--</strong></div>
+                            <div class="sub-score"><span>Memory & I/O</span><strong id="memBaseline">--</strong></div>
+                            <div class="sub-score"><span>System & Crypto</span><strong id="sysBaseline">--</strong></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="heuristic-card card after-heuristics">
-                    <h2><span class="material-icons-round">lightbulb</span> After Advice</h2>
-                    <ul id="heuristicsAfterList" class="heuristic-list"></ul>
+
+                <!-- Comparison Summary stats (Shown only in Comparison Mode) -->
+                <div class="summary-grid hidden" id="comparisonSummary">
+                    <div class="summary-card stat-improved">
+                        <span class="material-icons-round stat-icon">trending_up</span>
+                        <div class="stat-content">
+                            <h4>Improvements</h4>
+                            <h2 id="totalImprovements">0</h2>
+                        </div>
+                    </div>
+                    <div class="summary-card stat-regressed">
+                        <span class="material-icons-round stat-icon">trending_down</span>
+                        <div class="stat-content">
+                            <h4>Regressions</h4>
+                            <h2 id="totalRegressions">0</h2>
+                        </div>
+                    </div>
+                    <div class="summary-card stat-neutral">
+                        <span class="material-icons-round stat-icon">horizontal_rule</span>
+                        <div class="stat-content">
+                            <h4>Unchanged</h4>
+                            <h2 id="totalUnchanged">0</h2>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </section>
-    </main>
+
+                <!-- System Info Card -->
+                <div class="sysinfo-card card">
+                    <h2 id="sysinfoTitle">System Information</h2>
+                    <div id="sysinfoContent" class="sysinfo-grid"></div>
+                </div>
+
+                <!-- Charts Section (Radar/Comparison Chart) -->
+                <div class="charts-container">
+                    <div class="chart-card card">
+                        <div class="chart-header">
+                            <h2 id="chartTitle">Performance Radar</h2>
+                            <div class="filter-container">
+                                <label for="radarFilter">View:</label>
+                                <select id="radarFilter" class="select-input">
+                                    <option value="aggregate">All Subsystems (Aggregate)</option>
+                                    <option value="all">All Metrics (Detailed)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="canvas-wrapper">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metrics Table -->
+                <div class="metrics-card card">
+                    <h2 id="metricsTableTitle">Benchmark Metrics</h2>
+                    <div class="table-container">
+                        <table id="metricsTable">
+                            <thead>
+                                <tr id="metricsTableHeader">
+                                    <th>Subsystem</th>
+                                    <th>Metric</th>
+                                    <th id="colValActive">Value</th>
+                                    <th id="colValBaseline" class="hidden">Baseline</th>
+                                    <th>Unit</th>
+                                    <th id="colDelta" class="hidden">Delta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metricsBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Heuristics / Advice -->
+                <div class="heuristics-container" id="heuristicsContainer">
+                    <div class="heuristic-card card" id="adviceActiveCard">
+                        <h2 id="adviceActiveTitle"><span class="material-icons-round">lightbulb</span> Current Advice</h2>
+                        <ul id="heuristicsActiveList" class="heuristic-list"></ul>
+                    </div>
+                    <div class="heuristic-card card hidden" id="adviceBaselineCard">
+                        <h2><span class="material-icons-round">lightbulb</span> Baseline Advice</h2>
+                        <ul id="heuristicsBaselineList" class="heuristic-list"></ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
 
     <script src="chart.min.js"></script>
     <script src="app.js"></script>
