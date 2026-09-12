@@ -21,6 +21,22 @@
             <button id="importBtn" class="btn btn-secondary" title="Upload New Run">
                 <span class="material-icons-round">upload_file</span> Import Run
             </button>
+            <div class="export-dropdown">
+                <button id="exportMenuBtn" class="btn btn-secondary" title="Export Reports">
+                    <span class="material-icons-round">download</span> Export <span class="material-icons-round" style="font-size: 16px;">expand_more</span>
+                </button>
+                <div id="exportMenu" class="export-dropdown-content hidden">
+                    <button id="exportMarkdownBtn" class="export-item">
+                        <span class="material-icons-round">description</span> Export Markdown Report
+                    </button>
+                    <button id="exportCsvBtn" class="export-item">
+                        <span class="material-icons-round">table_chart</span> Export Metrics CSV
+                    </button>
+                    <button id="exportJsonBtn" class="export-item">
+                        <span class="material-icons-round">data_object</span> Export Run JSON
+                    </button>
+                </div>
+            </div>
             <button id="resetBtn" class="btn btn-icon" title="Reset/Clear Dashboard"><span class="material-icons-round">refresh</span></button>
         </div>
     </header>
@@ -153,17 +169,38 @@
                     <div id="sysinfoContent" class="sysinfo-grid"></div>
                 </div>
 
-                <!-- Charts Section (Radar/Comparison Chart) -->
+                <!-- Telemetry & Hardware Highlights Card -->
+                <div class="card telemetry-highlights-card" id="telemetryHighlightsCard">
+                    <h2><span class="material-icons-round">speed</span> Hardware Telemetry & Vital Signs</h2>
+                    <div class="telemetry-grid" id="telemetryGrid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Charts Section (Radar / Bar Comparison & Single Run Breakdown) -->
                 <div class="charts-container">
                     <div class="chart-card card">
                         <div class="chart-header">
-                            <h2 id="chartTitle">Performance Radar</h2>
-                            <div class="filter-container">
-                                <label for="radarFilter">View:</label>
-                                <select id="radarFilter" class="select-input">
-                                    <option value="aggregate">All Subsystems (Aggregate)</option>
-                                    <option value="all">All Metrics (Detailed)</option>
-                                </select>
+                            <div class="chart-title-group">
+                                <h2 id="chartTitle">Performance Analysis</h2>
+                                <span class="chart-subtitle" id="chartSubtitle">Interactive Visualization</span>
+                            </div>
+                            <div class="chart-controls">
+                                <div class="btn-toggle-group" id="chartTypeToggleGroup">
+                                    <button class="btn-toggle active" data-chart-type="radar" id="chartTypeRadarBtn" title="Radar Chart">
+                                        <span class="material-icons-round">radar</span> Radar
+                                    </button>
+                                    <button class="btn-toggle" data-chart-type="bar" id="chartTypeBarBtn" title="Bar Chart">
+                                        <span class="material-icons-round">bar_chart</span> Bar
+                                    </button>
+                                </div>
+                                <div class="filter-container">
+                                    <label for="radarFilter">Subsystem:</label>
+                                    <select id="radarFilter" class="select-input">
+                                        <option value="aggregate">All Subsystems (Aggregate)</option>
+                                        <option value="all">All Metrics (Detailed)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="canvas-wrapper">
@@ -172,19 +209,37 @@
                     </div>
                 </div>
 
-                <!-- Metrics Table -->
+                <!-- Metrics Table with Search & Filter -->
                 <div class="metrics-card card">
-                    <h2 id="metricsTableTitle">Benchmark Metrics</h2>
+                    <div class="table-card-header">
+                        <div>
+                            <h2 id="metricsTableTitle">Benchmark Metrics</h2>
+                            <span class="table-subtitle" id="metricsCountBadge">0 metrics</span>
+                        </div>
+                        <div class="table-actions">
+                            <div class="search-box">
+                                <span class="material-icons-round search-icon">search</span>
+                                <input type="text" id="metricSearchInput" placeholder="Filter metrics or subsystems..." class="search-input">
+                                <button id="clearSearchBtn" class="clear-search hidden"><span class="material-icons-round">close</span></button>
+                            </div>
+                            <select id="subsystemFilterSelect" class="select-input">
+                                <option value="all">All Subsystems</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="subsystem-chips" id="subsystemChipsContainer">
+                        <!-- Populated dynamically -->
+                    </div>
                     <div class="table-container">
                         <table id="metricsTable">
                             <thead>
                                 <tr id="metricsTableHeader">
-                                    <th>Subsystem</th>
-                                    <th>Metric</th>
-                                    <th id="colValActive">Value</th>
-                                    <th id="colValBaseline" class="hidden">Baseline</th>
+                                    <th class="sortable" data-sort="subsystem">Subsystem <span class="sort-icon material-icons-round">sort</span></th>
+                                    <th class="sortable" data-sort="metric">Metric <span class="sort-icon material-icons-round">sort</span></th>
+                                    <th id="colValActive" class="sortable" data-sort="active">Value <span class="sort-icon material-icons-round">sort</span></th>
+                                    <th id="colValBaseline" class="hidden sortable" data-sort="baseline">Baseline <span class="sort-icon material-icons-round">sort</span></th>
                                     <th>Unit</th>
-                                    <th id="colDelta" class="hidden">Delta</th>
+                                    <th id="colDelta" class="hidden sortable" data-sort="delta">Delta <span class="sort-icon material-icons-round">sort</span></th>
                                 </tr>
                             </thead>
                             <tbody id="metricsBody">
@@ -203,6 +258,25 @@
                     <div class="heuristic-card card hidden" id="adviceBaselineCard">
                         <h2><span class="material-icons-round">lightbulb</span> Baseline Advice</h2>
                         <ul id="heuristicsBaselineList" class="heuristic-list"></ul>
+                    </div>
+                </div>
+
+                <!-- Export Modal Dialog -->
+                <div id="exportModal" class="modal hidden">
+                    <div class="modal-backdrop" id="modalBackdrop"></div>
+                    <div class="modal-content card">
+                        <div class="modal-header">
+                            <h2 id="modalTitle">Export Report</h2>
+                            <button id="closeModalBtn" class="btn-icon"><span class="material-icons-round">close</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="modal-description" id="modalDescription">Preview generated report below. You can copy it directly to clipboard or download as a file.</p>
+                            <textarea id="modalTextarea" class="modal-textarea" readonly></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button id="copyModalBtn" class="btn btn-secondary"><span class="material-icons-round">content_copy</span> Copy to Clipboard</button>
+                            <button id="downloadModalBtn" class="btn btn-primary"><span class="material-icons-round">download</span> Download File</button>
+                        </div>
                     </div>
                 </div>
             </section>

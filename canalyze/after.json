@@ -1,13 +1,46 @@
 {
+  "version": "2.0.0",
+  "timestamp": 1726112400,
+  "duration_sec": 10,
+  "threads": 8,
   "sysinfo": {
-    "Kernel Version": "Linux 4.14.186-perf+ (Optimized)",
+    "Kernel Version": "Linux 4.14.186-perf+ (Optimized Cerium v2)",
     "Architecture": "aarch64",
-    "CPUs": "8"
+    "CPUs": "8",
+    "cpu_governor": "schedutil",
+    "cpu_model": "ARM Cortex-A76 / Cortex-A55 (big.LITTLE)",
+    "mem_total": "7896432 kB"
   },
   "metrics": [
-    { "subsystem": "syscall", "metric": "gettid_throughput", "value": 1700000.25, "unit": "ops/sec" },
-    { "subsystem": "mem", "metric": "bandwidth", "value": 12300.00, "unit": "MB/s" },
-    { "subsystem": "sched", "metric": "context_switch_time", "value": 1200.00, "unit": "ns" }
+    { "subsystem": "syscall", "metric": "gettid_throughput", "value": 1820000.75, "unit": "ops/sec" },
+    { "subsystem": "syscall", "metric": "energy_joules", "value": 21.20, "unit": "J" },
+    { "subsystem": "syscall", "metric": "efficiency_ops_per_j", "value": 85849.09, "unit": "ops/J" },
+    { "subsystem": "sched", "metric": "context_switch_throughput", "value": 952380.95, "unit": "switches/sec" },
+    { "subsystem": "sched", "metric": "context_switch_time", "value": 1050.00, "unit": "ns" },
+    { "subsystem": "sched", "metric": "energy_joules", "value": 25.10, "unit": "J" },
+    { "subsystem": "mem", "metric": "agg_seq_write_bw", "value": 11450.80, "unit": "MB/s" },
+    { "subsystem": "mem", "metric": "agg_memcpy_bw", "value": 14200.50, "unit": "MB/s" },
+    { "subsystem": "mem", "metric": "efficiency_mb_per_j", "value": 3944.58, "unit": "MB/J" },
+    { "subsystem": "io", "metric": "agg_seq_write_buffered_fsync_bw", "value": 460.80, "unit": "MB/s" },
+    { "subsystem": "io", "metric": "agg_seq_read_cached_bw", "value": 3650.00, "unit": "MB/s" },
+    { "subsystem": "futex", "metric": "futex_throughput", "value": 1120000.00, "unit": "ops/sec" },
+    { "subsystem": "crypto", "metric": "crypto_bw", "value": 540.20, "unit": "MB/s" },
+    { "subsystem": "rng", "metric": "urandom_bw", "value": 365.80, "unit": "MB/s" },
+    { "subsystem": "net", "metric": "udp_loopback_bw", "value": 920.00, "unit": "MB/s" },
+    { "subsystem": "zero", "metric": "zero_bw", "value": 16400.00, "unit": "MB/s" },
+    { "subsystem": "rcu", "metric": "vfs_rcu_throughput", "value": 310000.00, "unit": "ops/sec" },
+    { "subsystem": "neon", "metric": "matrix_ops_throughput", "value": 7900000.00, "unit": "ops/sec" },
+    { "subsystem": "sqlite", "metric": "transaction_throughput", "value": 182.50, "unit": "ops/sec" },
+    { "subsystem": "zram", "metric": "compression_throughput", "value": 2250.00, "unit": "MB/s" },
+    { "subsystem": "eas", "metric": "ping_pong_throughput", "value": 68000.00, "unit": "ops/sec" },
+    { "subsystem": "eas", "metric": "ping_pong_latency", "value": 14705.88, "unit": "ns" },
+    { "subsystem": "telemetry", "metric": "ipc", "value": 1.15, "unit": "IPC" },
+    { "subsystem": "telemetry", "metric": "hw_l1_miss_rate", "value": 3.90, "unit": "%" },
+    { "subsystem": "telemetry", "metric": "hw_branch_miss_rate", "value": 1.12, "unit": "%" },
+    { "subsystem": "telemetry", "metric": "peak_temp_c", "value": 74.20, "unit": "C" },
+    { "subsystem": "telemetry", "metric": "avg_freq_mhz", "value": 2050.00, "unit": "MHz" }
   ],
-  "heuristics": []
+  "heuristics": [
+    { "subsystem": "system", "severity": "info", "message": "All subsystems running within optimal bounds. No thermal throttling or lock starvation detected." }
+  ]
 }

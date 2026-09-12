@@ -17,6 +17,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeRunMeta = document.getElementById('activeRunMeta');
     const renameActiveBtn = document.getElementById('renameActiveBtn');
     
+    // Export Dropdown & Modal Elements
+    const exportMenuBtn = document.getElementById('exportMenuBtn');
+    const exportMenu = document.getElementById('exportMenu');
+    const exportMarkdownBtn = document.getElementById('exportMarkdownBtn');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
+    const exportModal = document.getElementById('exportModal');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDescription = document.getElementById('modalDescription');
+    const modalTextarea = document.getElementById('modalTextarea');
+    const copyModalBtn = document.getElementById('copyModalBtn');
+    const downloadModalBtn = document.getElementById('downloadModalBtn');
+
+    // Telemetry Highlights Card
+    const telemetryHighlightsCard = document.getElementById('telemetryHighlightsCard');
+    const telemetryGrid = document.getElementById('telemetryGrid');
+
     // Scores
     const scoreDashboard = document.getElementById('scoreDashboard');
     const scoreHeaderLeft = document.getElementById('scoreHeaderLeft');
@@ -47,15 +66,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // Charts
     const chartCard = document.querySelector('.chart-card');
     const chartTitle = document.getElementById('chartTitle');
+    const chartSubtitle = document.getElementById('chartSubtitle');
     const radarFilter = document.getElementById('radarFilter');
+    const chartTypeRadarBtn = document.getElementById('chartTypeRadarBtn');
+    const chartTypeBarBtn = document.getElementById('chartTypeBarBtn');
     let radarChartInstance = null;
+    let currentChartType = 'radar'; // 'radar' or 'bar'
     
-    // Metrics Table
+    // Metrics Table & Search/Filter
     const metricsTableTitle = document.getElementById('metricsTableTitle');
+    const metricsCountBadge = document.getElementById('metricsCountBadge');
+    const metricSearchInput = document.getElementById('metricSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const subsystemFilterSelect = document.getElementById('subsystemFilterSelect');
+    const subsystemChipsContainer = document.getElementById('subsystemChipsContainer');
     const colValActive = document.getElementById('colValActive');
     const colValBaseline = document.getElementById('colValBaseline');
     const colDelta = document.getElementById('colDelta');
     const metricsBody = document.getElementById('metricsBody');
+    let selectedSubsystemFilter = 'all';
+    let searchQuery = '';
+    let sortColumn = 'subsystem';
+    let sortAscending = true;
+    let activeExportFileContent = '';
+    let activeExportFileName = '';
+    let activeExportMime = 'text/plain';
     
     // Heuristics
     const adviceActiveCard = document.getElementById('adviceActiveCard');
@@ -76,8 +111,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Helper: Determine if metric improvement is positive or negative change
     function isHigherBetter(unit) {
-        if (unit.includes('/sec') || unit.includes('/s') || unit.includes('/J')) return true;
-        if (unit === 'ns' || unit === 'J') return false;
+        if (!unit) return true;
+        if (unit.includes('/sec') || unit.includes('/s') || unit.includes('/J') || unit.includes('IPC')) return true;
+        if (unit === 'ns' || unit === 'J' || unit === 'faults' || unit === '%' && unit.includes('miss')) return false;
+        if (unit === 'C') return false; // Lower peak temperature is better
         return true; 
     }
 
@@ -385,10 +422,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const kernel = activeRun.sysinfo?.["Kernel Version"] || "Unknown Kernel";
         const arch = activeRun.sysinfo?.["Architecture"] || "Unknown Arch";
         const cpu = activeRun.sysinfo?.["CPUs"] || "";
-        activeRunMeta.textContent = `${arch} | ${cpu ? `${cpu} CPUs | ` : ''}${kernel}`;
+        const cpuModel = activeRun.sysinfo?.["cpu_model"] ? ` | ${activeRun.sysinfo["cpu_model"]}` : '';
+        activeRunMeta.textContent = `${arch} | ${cpu ? `${cpu} CPUs` : ''}${cpuModel} | ${kernel}`;
 
         // Calculate active run score
         const scoreAct = calculateScores(activeRun.metrics);
+
+        // Render Telemetry Highlights (Peak temp, IPC, L1 miss, TLB miss, energy, etc.)
+        renderTelemetryHighlights();
+
+        // Populate Subsystem Filter Select & Chips
+        populateSubsystemFilterControls();
 
         // Conditional rendering: Single Run vs. Comparison
         if (comparisonRun) {
@@ -400,12 +444,14 @@ document.addEventListener('DOMContentLoaded', () => {
             comparisonVS.classList.remove('hidden');
             comparisonScoreCard.classList.remove('hidden');
             comparisonSummary.classList.remove('hidden');
-            chartCard.classList.remove('hidden'); // Show radar chart
+            chartCard.classList.remove('hidden');
             adviceBaselineCard.classList.remove('hidden');
             
             // Set header names
             scoreHeaderLeft.textContent = "Current Score";
             metricsTableTitle.textContent = "Metrics Comparison";
+            chartTitle.textContent = currentChartType === 'radar' ? "Performance Comparison Radar" : "Relative Performance Breakdown";
+            chartSubtitle.textContent = `Comparing against baseline: ${comparisonRun.name}`;
             adviceActiveTitle.innerHTML = `<span class="material-icons-round">lightbulb</span> Current Advice`;
             
             // Set active score values
@@ -450,15 +496,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             });
 
-            // Parse and render metrics in table
-            renderComparisonMetricsTable(scoreAct, scoreBase);
+            // Parse comparison metrics
+            prepareComparisonMetrics();
+
+            // Render table
+            renderMetricsTable();
             
             // Populate Advice lists
             renderAdviceList(activeRun.heuristics, heuristicsActiveList);
             renderAdviceList(comparisonRun.heuristics, heuristicsBaselineList);
 
-            // Update radar chart
-            updateRadarChart(radarFilter.value);
+            // Update chart
+            updateChart();
 
         } else {
             // Render SINGLE RUN MODE
@@ -469,12 +518,14 @@ document.addEventListener('DOMContentLoaded', () => {
             comparisonVS.classList.add('hidden');
             comparisonScoreCard.classList.add('hidden');
             comparisonSummary.classList.add('hidden');
-            chartCard.classList.add('hidden'); // Hide radar chart since no comparison baseline is loaded
+            chartCard.classList.remove('hidden'); // Show chart in single run mode as well
             adviceBaselineCard.classList.add('hidden');
             
             // Set header names
             scoreHeaderLeft.textContent = "Benchmark Score";
             metricsTableTitle.textContent = "Benchmark Metrics";
+            chartTitle.textContent = "Subsystem Performance & Energy Breakdown";
+            chartSubtitle.textContent = `Single run analysis for ${activeRun.name}`;
             adviceActiveTitle.innerHTML = `<span class="material-icons-round">lightbulb</span> System Advice`;
             
             // Set active score values
@@ -495,23 +546,142 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             });
 
-            // Parse and render metrics in table
-            renderSingleMetricsTable();
+            // Parse single run metrics
+            prepareSingleRunMetrics();
+
+            // Render table
+            renderMetricsTable();
             
             // Populate active Advice list
             renderAdviceList(activeRun.heuristics, heuristicsActiveList);
             
-            // Destroy chart if it exists
-            if (radarChartInstance) {
-                radarChartInstance.destroy();
-                radarChartInstance = null;
-            }
+            // Update chart for single run mode
+            updateChart();
         }
         
         updateActiveSidebarClasses();
     }
 
-    // Populate Advice Helper
+    // Render Telemetry Highlights Grid
+    function renderTelemetryHighlights() {
+        if (!activeRun || !activeRun.metrics) return;
+        telemetryGrid.innerHTML = '';
+
+        const metricsMap = {};
+        activeRun.metrics.forEach(m => {
+            metricsMap[m.metric] = m;
+        });
+
+        // 1. Peak Temperature
+        const tempMetric = metricsMap['peak_temp_c'] || metricsMap['peak_temp'];
+        if (tempMetric) {
+            const tempVal = tempMetric.value;
+            let status = 'status-good';
+            if (tempVal >= 85) status = 'status-alert';
+            else if (tempVal >= 75) status = 'status-warn';
+            telemetryGrid.innerHTML += `
+                <div class="telemetry-item ${status}">
+                    <div class="telemetry-item-header">
+                        <span class="telemetry-item-label">Peak Temperature</span>
+                        <span class="material-icons-round" style="font-size: 18px;">thermostat</span>
+                    </div>
+                    <div class="telemetry-item-value">${tempVal.toFixed(1)}<span class="telemetry-item-unit">°C</span></div>
+                    <div class="telemetry-item-sub">${tempVal >= 85 ? 'Severe Throttling' : tempVal >= 75 ? 'Elevated' : 'Nominal'}</div>
+                </div>
+            `;
+        }
+
+        // 2. Hardware IPC
+        const ipcMetric = metricsMap['ipc'] || metricsMap['hw_ipc'];
+        if (ipcMetric) {
+            const ipcVal = ipcMetric.value;
+            const status = ipcVal >= 1.0 ? 'status-good' : (ipcVal < 0.6 ? 'status-alert' : 'status-warn');
+            telemetryGrid.innerHTML += `
+                <div class="telemetry-item ${status}">
+                    <div class="telemetry-item-header">
+                        <span class="telemetry-item-label">Hardware IPC</span>
+                        <span class="material-icons-round" style="font-size: 18px;">memory</span>
+                    </div>
+                    <div class="telemetry-item-value">${ipcVal.toFixed(2)}<span class="telemetry-item-unit">IPC</span></div>
+                    <div class="telemetry-item-sub">${ipcVal >= 1.0 ? 'Efficient execution' : 'Memory/pipeline stalls'}</div>
+                </div>
+            `;
+        }
+
+        // 3. Hardware L1 Miss Rate
+        const l1Metric = metricsMap['hw_l1_miss_rate'];
+        if (l1Metric) {
+            const l1Val = l1Metric.value;
+            const status = l1Val <= 4.0 ? 'status-good' : (l1Val > 6.0 ? 'status-alert' : 'status-warn');
+            telemetryGrid.innerHTML += `
+                <div class="telemetry-item ${status}">
+                    <div class="telemetry-item-header">
+                        <span class="telemetry-item-label">L1D Cache Miss</span>
+                        <span class="material-icons-round" style="font-size: 18px;">disc_full</span>
+                    </div>
+                    <div class="telemetry-item-value">${l1Val.toFixed(2)}<span class="telemetry-item-unit">%</span></div>
+                    <div class="telemetry-item-sub">${l1Val > 5.0 ? 'Cache thrashing' : 'Good locality'}</div>
+                </div>
+            `;
+        }
+
+        // 4. Branch Misprediction
+        const branchMetric = metricsMap['hw_branch_miss_rate'];
+        if (branchMetric) {
+            const bVal = branchMetric.value;
+            const status = bVal <= 1.5 ? 'status-good' : (bVal > 2.0 ? 'status-alert' : 'status-warn');
+            telemetryGrid.innerHTML += `
+                <div class="telemetry-item ${status}">
+                    <div class="telemetry-item-header">
+                        <span class="telemetry-item-label">Branch Mispredict</span>
+                        <span class="material-icons-round" style="font-size: 18px;">alt_route</span>
+                    </div>
+                    <div class="telemetry-item-value">${bVal.toFixed(2)}<span class="telemetry-item-unit">%</span></div>
+                    <div class="telemetry-item-sub">${bVal > 2.0 ? 'High branch stalls' : 'Well predicted'}</div>
+                </div>
+            `;
+        }
+
+        // 5. Overall Average Frequency
+        const freqMetric = metricsMap['avg_freq_mhz'];
+        if (freqMetric) {
+            const fVal = freqMetric.value;
+            telemetryGrid.innerHTML += `
+                <div class="telemetry-item status-good">
+                    <div class="telemetry-item-header">
+                        <span class="telemetry-item-label">Average Frequency</span>
+                        <span class="material-icons-round" style="font-size: 18px;">bolt</span>
+                    </div>
+                    <div class="telemetry-item-value">${Math.round(fVal)}<span class="telemetry-item-unit">MHz</span></div>
+                    <div class="telemetry-item-sub">Across all active cores</div>
+                </div>
+            `;
+        }
+
+        // 6. Energy Consumption (if present)
+        const energyMetric = metricsMap['energy_joules'];
+        if (energyMetric) {
+            telemetryGrid.innerHTML += `
+                <div class="telemetry-item status-good">
+                    <div class="telemetry-item-header">
+                        <span class="telemetry-item-label">Subsystem Energy</span>
+                        <span class="material-icons-round" style="font-size: 18px;">battery_charging_full</span>
+                    </div>
+                    <div class="telemetry-item-value">${energyMetric.value.toFixed(1)}<span class="telemetry-item-unit">J</span></div>
+                    <div class="telemetry-item-sub">Hardware power sensor</div>
+                </div>
+            `;
+        }
+
+        // If no telemetry metrics present, hide card or show fallback
+        if (telemetryGrid.children.length === 0) {
+            telemetryHighlightsCard.classList.add('hidden');
+        } else {
+            telemetryHighlightsCard.classList.remove('hidden');
+        }
+    }
+
+    // Populate Advice Helper with severity badge
     function renderAdviceList(adviceArray, containerElement) {
         containerElement.innerHTML = '';
         if (!adviceArray || adviceArray.length === 0) {
@@ -519,40 +689,82 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         adviceArray.forEach(h => {
-            containerElement.innerHTML += `<li><strong>${h.subsystem}</strong> ${h.message}</li>`;
-        });
-    }
-
-    // Metrics Table for Single Run
-    function renderSingleMetricsTable() {
-        metricsBody.innerHTML = '';
-        activeRun.metrics.forEach(m => {
-            metricsBody.innerHTML += `
-                <tr>
-                    <td><strong>${m.subsystem}</strong></td>
-                    <td>${m.metric}</td>
-                    <td>${m.value !== null ? m.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
-                    <td>${m.unit}</td>
-                </tr>
+            const severity = h.severity || 'warning';
+            const badgeClass = severity === 'critical' ? 'severity-critical' : (severity === 'info' ? 'severity-info' : 'severity-warning');
+            containerElement.innerHTML += `
+                <li>
+                    <div class="heuristic-meta">
+                        <strong>${h.subsystem}</strong>
+                        <span class="severity-badge ${badgeClass}">${severity}</span>
+                    </div>
+                    <span>${h.message}</span>
+                </li>
             `;
         });
     }
 
-    // Metrics Table for Comparison
-    function renderComparisonMetricsTable() {
-        metricsBody.innerHTML = '';
-        
+    // Populate subsystem filter controls (select dropdown & chips)
+    function populateSubsystemFilterControls() {
+        const subsystems = new Set();
+        if (activeRun && activeRun.metrics) {
+            activeRun.metrics.forEach(m => subsystems.add(m.subsystem));
+        }
+        if (comparisonRun && comparisonRun.metrics) {
+            comparisonRun.metrics.forEach(m => subsystems.add(m.subsystem));
+        }
+
+        const sortedSubsystems = Array.from(subsystems).sort();
+
+        // Update select
+        subsystemFilterSelect.innerHTML = '<option value="all">All Subsystems</option>';
+        sortedSubsystems.forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub;
+            opt.textContent = sub;
+            subsystemFilterSelect.appendChild(opt);
+        });
+        subsystemFilterSelect.value = selectedSubsystemFilter;
+
+        // Update chips
+        subsystemChipsContainer.innerHTML = `
+            <button class="filter-chip ${selectedSubsystemFilter === 'all' ? 'active' : ''}" data-sub="all">All</button>
+        `;
+        sortedSubsystems.forEach(sub => {
+            const chip = document.createElement('button');
+            chip.className = `filter-chip ${selectedSubsystemFilter === sub ? 'active' : ''}`;
+            chip.setAttribute('data-sub', sub);
+            chip.textContent = sub;
+            subsystemChipsContainer.appendChild(chip);
+        });
+    }
+
+    // Prepare Single Run Metrics structure
+    function prepareSingleRunMetrics() {
+        parsedMetrics = (activeRun.metrics || []).map(m => ({
+            subsystem: m.subsystem,
+            metric: m.metric,
+            unit: m.unit,
+            valA: m.value,
+            valB: null,
+            deltaStr: '-',
+            deltaClass: 'delta-neutral',
+            relativePerf: 100
+        }));
+    }
+
+    // Prepare Comparison Metrics structure
+    function prepareComparisonMetrics() {
         let improvements = 0;
         let regressions = 0;
         let unchanged = 0;
 
         const metricsBaseMap = {};
-        comparisonRun.metrics.forEach(m => {
+        (comparisonRun.metrics || []).forEach(m => {
             metricsBaseMap[m.subsystem + '|' + m.metric] = m;
         });
 
         const metricsActMap = {};
-        activeRun.metrics.forEach(m => {
+        (activeRun.metrics || []).forEach(m => {
             metricsActMap[m.subsystem + '|' + m.metric] = m;
         });
 
@@ -571,6 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let deltaStr = 'N/A';
             let deltaClass = 'delta-neutral';
+            let relativePerf = 100;
 
             if (valB !== null && valA !== null) {
                 const diff = valA - valB;
@@ -592,31 +805,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     deltaStr = (pct > 0 ? '+' : '') + pct.toFixed(2) + '%';
                 }
                 
-                // Radar chart data preparation
                 if (valB > 0 && valA > 0) {
                     const higherBetter = isHigherBetter(unit);
-                    const normalizedAfter = higherBetter ? (valA / valB) * 100 : (valB / valA) * 100;
-                    parsedMetrics.push({
-                        subsystem: subsystem,
-                        metric: metricName,
-                        unit: unit,
-                        valB: valB,
-                        valA: valA,
-                        relativePerf: normalizedAfter
-                    });
+                    relativePerf = higherBetter ? (valA / valB) * 100 : (valB / valA) * 100;
                 }
             }
 
-            metricsBody.innerHTML += `
-                <tr>
-                    <td><strong>${subsystem}</strong></td>
-                    <td>${metricName}</td>
-                    <td>${valA !== null ? valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
-                    <td class="delta-neutral">${valB !== null ? valB.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
-                    <td>${unit}</td>
-                    <td class="${deltaClass}">${deltaStr}</td>
-                </tr>
-            `;
+            parsedMetrics.push({
+                subsystem: subsystem,
+                metric: metricName,
+                unit: unit,
+                valB: valB,
+                valA: valA,
+                deltaStr: deltaStr,
+                deltaClass: deltaClass,
+                relativePerf: relativePerf
+            });
         });
 
         totalImprovements.textContent = improvements;
@@ -624,51 +828,125 @@ document.addEventListener('DOMContentLoaded', () => {
         totalUnchanged.textContent = unchanged;
     }
 
-    // Chart.js Radar Chart comparison rendering
-    function updateRadarChart(filterValue) {
-        if (!comparisonRun) return;
+    // Render Metrics Table with filtering, searching, and sorting
+    function renderMetricsTable() {
+        metricsBody.innerHTML = '';
+        
+        let filtered = parsedMetrics.slice();
 
-        let labels = [];
-        let dataBefore = [];
-        let dataAfter = [];
+        // Subsystem filter
+        if (selectedSubsystemFilter !== 'all') {
+            filtered = filtered.filter(m => m.subsystem === selectedSubsystemFilter);
+        }
 
-        if (filterValue === 'aggregate') {
-            const groups = {};
-            parsedMetrics.forEach(m => {
-                if (!groups[m.subsystem]) {
-                    groups[m.subsystem] = [];
-                }
-                groups[m.subsystem].push(m.relativePerf);
-            });
+        // Search query
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter(m => 
+                m.subsystem.toLowerCase().includes(q) || 
+                m.metric.toLowerCase().includes(q) ||
+                m.unit.toLowerCase().includes(q)
+            );
+        }
 
-            Object.keys(groups).sort().forEach(sub => {
-                const values = groups[sub];
-                const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
-                labels.push(sub);
-                dataBefore.push(100);
-                dataAfter.push(avg);
-            });
-        } else if (filterValue === 'all') {
-            parsedMetrics.forEach(m => {
-                labels.push([m.subsystem, m.metric]);
-                dataBefore.push(100);
-                dataAfter.push(m.relativePerf);
-            });
-        } else if (filterValue.startsWith('subsystem:')) {
+        // Sorting
+        filtered.sort((a, b) => {
+            let valA, valB;
+            switch (sortColumn) {
+                case 'subsystem':
+                    valA = a.subsystem.toLowerCase();
+                    valB = b.subsystem.toLowerCase();
+                    break;
+                case 'metric':
+                    valA = a.metric.toLowerCase();
+                    valB = b.metric.toLowerCase();
+                    break;
+                case 'active':
+                    valA = a.valA !== null ? a.valA : -Infinity;
+                    valB = b.valA !== null ? b.valA : -Infinity;
+                    break;
+                case 'baseline':
+                    valA = a.valB !== null ? a.valB : -Infinity;
+                    valB = b.valB !== null ? b.valB : -Infinity;
+                    break;
+                case 'delta':
+                    valA = a.relativePerf;
+                    valB = b.relativePerf;
+                    break;
+                default:
+                    valA = a.subsystem;
+                    valB = b.subsystem;
+            }
+
+            if (valA < valB) return sortAscending ? -1 : 1;
+            if (valA > valB) return sortAscending ? 1 : -1;
+            return 0;
+        });
+
+        // Metrics count badge
+        metricsCountBadge.textContent = `${filtered.length} of ${parsedMetrics.length} metrics`;
+
+        if (filtered.length === 0) {
+            metricsBody.innerHTML = `
+                <tr>
+                    <td colspan="${comparisonRun ? 6 : 4}" style="text-align: center; color: var(--neutral-color); padding: 2rem;">
+                        No metrics matched your filter query.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        filtered.forEach(m => {
+            if (comparisonRun) {
+                metricsBody.innerHTML += `
+                    <tr>
+                        <td><strong>${m.subsystem}</strong></td>
+                        <td>${m.metric}</td>
+                        <td>${m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                        <td class="delta-neutral">${m.valB !== null ? m.valB.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                        <td>${m.unit}</td>
+                        <td class="${m.deltaClass}">${m.deltaStr}</td>
+                    </tr>
+                `;
+            } else {
+                metricsBody.innerHTML += `
+                    <tr>
+                        <td><strong>${m.subsystem}</strong></td>
+                        <td>${m.metric}</td>
+                        <td>${m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                        <td>${m.unit}</td>
+                    </tr>
+                `;
+            }
+        });
+
+        // Update sort icons on header
+        const headers = document.querySelectorAll('#metricsTableHeader th.sortable');
+        headers.forEach(th => {
+            th.classList.remove('sorted-asc', 'sorted-desc');
+            const col = th.getAttribute('data-sort');
+            if (col === sortColumn) {
+                th.classList.add(sortAscending ? 'sorted-asc' : 'sorted-desc');
+            }
+        });
+    }
+
+    // Unified Chart Rendering (Radar or Bar; Comparison or Single Run)
+    function updateChart() {
+        const filterValue = radarFilter.value;
+        const validMetrics = parsedMetrics.filter(m => (comparisonRun ? (m.valA > 0 && m.valB > 0) : (m.valA > 0)));
+
+        let filtered = validMetrics;
+        if (filterValue.startsWith('subsystem:')) {
             const subName = filterValue.split(':')[1];
-            const filtered = parsedMetrics.filter(m => m.subsystem === subName);
-            filtered.forEach(m => {
-                labels.push(m.metric);
-                dataBefore.push(100);
-                dataAfter.push(m.relativePerf);
-            });
+            filtered = validMetrics.filter(m => m.subsystem === subName);
         }
 
         // Rebuild subsystem dropdown select list
-        const subsystemsSet = new Set(parsedMetrics.map(m => m.subsystem));
+        const subsystemsSet = new Set(validMetrics.map(m => m.subsystem));
         const uniqueSubsystems = Array.from(subsystemsSet).sort();
         
-        // Save current filter value before rebuilding options
         const currentFilterValue = radarFilter.value;
         radarFilter.innerHTML = `
             <option value="aggregate">All Subsystems (Aggregate)</option>
@@ -680,107 +958,347 @@ document.addEventListener('DOMContentLoaded', () => {
             opt.textContent = `Subsystem: ${sub}`;
             radarFilter.appendChild(opt);
         });
-        radarFilter.value = uniqueSubsystems.includes(currentFilterValue.split(':')[1]) ? currentFilterValue : 'aggregate';
+        radarFilter.value = uniqueSubsystems.includes(currentFilterValue.split(':')[1]) ? currentFilterValue : (currentFilterValue === 'all' ? 'all' : 'aggregate');
 
-        if (radarChartInstance) {
-            radarChartInstance.data.labels = labels;
-            radarChartInstance.data.datasets[0].data = dataBefore;
-            radarChartInstance.data.datasets[1].data = dataAfter;
-            radarChartInstance.data.datasets[0].label = `${comparisonRun.name} (Baseline = 100%)`;
-            radarChartInstance.data.datasets[1].label = `${activeRun.name} (Relative Performance)`;
-            radarChartInstance.update();
+        // Extract labels and data
+        let labels = [];
+        let dataSeriesA = [];
+        let dataSeriesB = [];
+
+        if (comparisonRun) {
+            // COMPARISON MODE CHART
+            if (radarFilter.value === 'aggregate') {
+                const groups = {};
+                filtered.forEach(m => {
+                    if (!groups[m.subsystem]) groups[m.subsystem] = [];
+                    groups[m.subsystem].push(m.relativePerf);
+                });
+
+                Object.keys(groups).sort().forEach(sub => {
+                    const values = groups[sub];
+                    const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+                    labels.push(sub);
+                    dataSeriesB.push(100);
+                    dataSeriesA.push(avg);
+                });
+            } else if (radarFilter.value === 'all') {
+                filtered.forEach(m => {
+                    labels.push([m.subsystem, m.metric]);
+                    dataSeriesB.push(100);
+                    dataSeriesA.push(m.relativePerf);
+                });
+            } else {
+                filtered.forEach(m => {
+                    labels.push(m.metric);
+                    dataSeriesB.push(100);
+                    dataSeriesA.push(m.relativePerf);
+                });
+            }
         } else {
-            const ctx = document.getElementById('radarChart').getContext('2d');
+            // SINGLE RUN MODE CHART: Display normalized subsystem metrics
+            if (radarFilter.value === 'aggregate') {
+                const subScores = {};
+                filtered.forEach(m => {
+                    if (!subScores[m.subsystem]) subScores[m.subsystem] = 0;
+                    subScores[m.subsystem] += 1;
+                });
+                Object.keys(subScores).sort().forEach(sub => {
+                    labels.push(sub);
+                    const subM = filtered.filter(m => m.subsystem === sub);
+                    const avgVal = subM.reduce((sum, m) => sum + m.valA, 0) / subM.length;
+                    dataSeriesA.push(Math.round(avgVal * 100) / 100);
+                });
+            } else {
+                filtered.forEach(m => {
+                    labels.push(m.metric);
+                    dataSeriesA.push(m.valA);
+                });
+            }
+        }
+
+        // Destroy previous instance
+        if (radarChartInstance) {
+            radarChartInstance.destroy();
+            radarChartInstance = null;
+        }
+
+        const ctx = document.getElementById('radarChart').getContext('2d');
+
+        if (comparisonRun) {
+            if (currentChartType === 'radar') {
+                radarChartInstance = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: `${comparisonRun.name} (Baseline = 100%)`,
+                                data: dataSeriesB,
+                                backgroundColor: 'rgba(154, 160, 166, 0.08)',
+                                borderColor: 'rgba(154, 160, 166, 0.6)',
+                                pointBackgroundColor: 'rgba(154, 160, 166, 0.8)',
+                                pointBorderColor: 'rgba(154, 160, 166, 1)',
+                                borderWidth: 1.5,
+                            },
+                            {
+                                label: `${activeRun.name} (Relative Performance)`,
+                                data: dataSeriesA,
+                                backgroundColor: 'rgba(168, 199, 250, 0.15)',
+                                borderColor: 'rgba(168, 199, 250, 0.85)',
+                                pointBackgroundColor: 'rgba(168, 199, 250, 1)',
+                                pointBorderColor: '#fff',
+                                borderWidth: 2,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 600, easing: 'easeOutQuart' },
+                        scales: {
+                            r: {
+                                angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
+                                grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                                pointLabels: {
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    font: { family: 'Inter', size: 10, weight: '500' }
+                                },
+                                ticks: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { color: 'rgba(255, 255, 255, 0.9)', font: { family: 'Inter', size: 12, weight: '500' } }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                                titleColor: '#fff',
+                                bodyColor: '#e3e3e3',
+                                borderColor: 'rgba(255, 255, 255, 0.1)',
+                                borderWidth: 1,
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label ? context.dataset.label.split(' (')[0] + ': ' : '';
+                                        if (context.parsed.r !== undefined) {
+                                            label += context.parsed.r.toFixed(1) + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Grouped Bar Chart Comparison
+                radarChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: `${comparisonRun.name} (Baseline = 100%)`,
+                                data: dataSeriesB,
+                                backgroundColor: 'rgba(154, 160, 166, 0.4)',
+                                borderColor: 'rgba(154, 160, 166, 0.8)',
+                                borderWidth: 1,
+                                borderRadius: 4
+                            },
+                            {
+                                label: `${activeRun.name} (Relative %)`,
+                                data: dataSeriesA,
+                                backgroundColor: 'rgba(168, 199, 250, 0.6)',
+                                borderColor: 'rgba(168, 199, 250, 1)',
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 600, easing: 'easeOutQuart' },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                ticks: { color: 'rgba(255, 255, 255, 0.7)', font: { family: 'Inter', size: 10 } }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                ticks: {
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    callback: function(v) { return v + '%'; }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { color: 'rgba(255, 255, 255, 0.9)', font: { family: 'Inter', size: 12, weight: '500' } }
+                            }
+                        }
+                    }
+                });
+            }
+        } else {
+            // SINGLE RUN BAR CHART
             radarChartInstance = new Chart(ctx, {
-                type: 'radar',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [
                         {
-                            label: `${comparisonRun.name} (Baseline = 100%)`,
-                            data: dataBefore,
-                            backgroundColor: 'rgba(154, 160, 166, 0.08)',
-                            borderColor: 'rgba(154, 160, 166, 0.6)',
-                            pointBackgroundColor: 'rgba(154, 160, 166, 0.8)',
-                            pointBorderColor: 'rgba(154, 160, 166, 1)',
-                            borderWidth: 1.5,
-                        },
-                        {
-                            label: `${activeRun.name} (Relative Performance)`,
-                            data: dataAfter,
-                            backgroundColor: 'rgba(168, 199, 250, 0.15)',
-                            borderColor: 'rgba(168, 199, 250, 0.85)',
-                            pointBackgroundColor: 'rgba(168, 199, 250, 1)',
-                            pointBorderColor: '#fff',
-                            borderWidth: 2,
+                            label: `${activeRun.name} (Raw Metrics)`,
+                            data: dataSeriesA,
+                            backgroundColor: 'rgba(168, 199, 250, 0.5)',
+                            borderColor: 'rgba(168, 199, 250, 0.9)',
+                            borderWidth: 1,
+                            borderRadius: 4
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: {
-                        duration: 800,
-                        easing: 'easeOutQuart'
-                    },
                     scales: {
-                        r: {
-                            angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
-                            grid: { color: 'rgba(255, 255, 255, 0.08)' },
-                            pointLabels: {
-                                color: 'rgba(255, 255, 255, 0.7)',
-                                font: { family: 'Inter', size: 10, weight: '500' }
-                            },
-                            ticks: { display: false }
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)', font: { family: 'Inter', size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: 'rgba(255, 255, 255, 0.7)' }
                         }
                     },
                     plugins: {
                         legend: {
-                            labels: {
-                                color: 'rgba(255, 255, 255, 0.9)',
-                                font: { family: 'Inter', size: 12, weight: '500' }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(30, 30, 30, 0.95)',
-                            titleColor: '#fff',
-                            bodyColor: '#e3e3e3',
-                            borderColor: 'rgba(255, 255, 255, 0.1)',
-                            borderWidth: 1,
-                            padding: 12,
-                            cornerRadius: 8,
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label = label.split(' (')[0] + ': ';
-                                    }
-                                    if (context.parsed.r !== undefined) {
-                                        label += context.parsed.r.toFixed(1) + '%';
-                                    }
-                                    return label;
-                                },
-                                footer: function(tooltipItems) {
-                                    const filterVal = radarFilter.value;
-                                    if (filterVal !== 'aggregate') return '';
-
-                                    const subsystem = tooltipItems[0].label;
-                                    const subMetrics = parsedMetrics.filter(m => m.subsystem === subsystem);
-
-                                    let lines = ['\nMetrics breakdown:'];
-                                    subMetrics.forEach(m => {
-                                        const pct = m.relativePerf - 100;
-                                        const sign = pct >= 0 ? '+' : '';
-                                        lines.push(`• ${m.metric}: ${sign}${pct.toFixed(1)}%`);
-                                    });
-                                    return lines.join('\n');
-                                }
-                            }
+                            labels: { color: 'rgba(255, 255, 255, 0.9)' }
                         }
                     }
                 }
             });
         }
+    }
+
+    // Generate Markdown Benchmark Report
+    function generateMarkdownReport() {
+        if (!activeRun) return '';
+        const now = new Date().toISOString();
+        let md = `# Cerium Benchmark Report\n\n`;
+        md += `*Generated by CAnalyze on ${now}*\n\n`;
+
+        // Run Metadata
+        md += `## System Environment\n\n`;
+        md += `| Attribute | Current (${activeRun.name}) | ${comparisonRun ? `Baseline (${comparisonRun.name})` : ''} |\n`;
+        md += `| :--- | :--- | ${comparisonRun ? ':--- |' : ''}\n`;
+        const allKeys = new Set([...Object.keys(activeRun.sysinfo || {}), ...(comparisonRun?.sysinfo ? Object.keys(comparisonRun.sysinfo) : [])]);
+        allKeys.forEach(k => {
+            const vA = activeRun.sysinfo[k] || '-';
+            const vB = comparisonRun ? (comparisonRun.sysinfo[k] || '-') : '';
+            md += `| **${k}** | ${vA} | ${comparisonRun ? `${vB} |` : ''}\n`;
+        });
+        md += `\n`;
+
+        // Executive Summary
+        const scoreAct = calculateScores(activeRun.metrics);
+        if (comparisonRun) {
+            const scoreBase = calculateScores(comparisonRun.metrics);
+            const diff = scoreAct.total - scoreBase.total;
+            const pct = scoreBase.total > 0 ? ((diff / scoreBase.total) * 100).toFixed(1) : 'N/A';
+            md += `## Executive Benchmark Summary\n\n`;
+            md += `- **Active Run Score**: ${scoreAct.total.toLocaleString()} (Compute: ${scoreAct.compute}, Mem/IO: ${scoreAct.memio}, Sys: ${scoreAct.sys})\n`;
+            md += `- **Baseline Score**: ${scoreBase.total.toLocaleString()} (Compute: ${scoreBase.compute}, Mem/IO: ${scoreBase.memio}, Sys: ${scoreBase.sys})\n`;
+            md += `- **Overall Score Delta**: **${pct > 0 ? '+' : ''}${pct}%**\n\n`;
+        } else {
+            md += `## Executive Benchmark Summary\n\n`;
+            md += `- **Total Benchmark Score**: ${scoreAct.total.toLocaleString()}\n`;
+            md += `  - Compute: ${scoreAct.compute.toLocaleString()}\n`;
+            md += `  - Memory & I/O: ${scoreAct.memio.toLocaleString()}\n`;
+            md += `  - System & Crypto: ${scoreAct.sys.toLocaleString()}\n\n`;
+        }
+
+        // Metrics Table
+        md += `## Detailed Subsystem Metrics\n\n`;
+        if (comparisonRun) {
+            md += `| Subsystem | Metric | Current | Baseline | Unit | Delta |\n`;
+            md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+            parsedMetrics.forEach(m => {
+                const valA = m.valA !== null ? m.valA.toFixed(2) : '-';
+                const valB = m.valB !== null ? m.valB.toFixed(2) : '-';
+                md += `| ${m.subsystem} | ${m.metric} | ${valA} | ${valB} | ${m.unit} | ${m.deltaStr} |\n`;
+            });
+        } else {
+            md += `| Subsystem | Metric | Value | Unit |\n`;
+            md += `| :--- | :--- | :--- | :--- |\n`;
+            parsedMetrics.forEach(m => {
+                const valA = m.valA !== null ? m.valA.toFixed(2) : '-';
+                md += `| ${m.subsystem} | ${m.metric} | ${valA} | ${m.unit} |\n`;
+            });
+        }
+        md += `\n`;
+
+        // Heuristics & Advice
+        if (activeRun.heuristics && activeRun.heuristics.length > 0) {
+            md += `## Kernel Patching Advice & Bottlenecks\n\n`;
+            activeRun.heuristics.forEach(h => {
+                const sev = (h.severity || 'warning').toUpperCase();
+                md += `- **[${sev}] ${h.subsystem}**: ${h.message}\n`;
+            });
+            md += `\n`;
+        }
+
+        return md;
+    }
+
+    // Generate CSV export
+    function generateCsvContent() {
+        if (!activeRun) return '';
+        let csv = '';
+        if (comparisonRun) {
+            csv = `"Subsystem","Metric","Current Value","Baseline Value","Unit","Delta Percent"\n`;
+            parsedMetrics.forEach(m => {
+                const valA = m.valA !== null ? m.valA : '';
+                const valB = m.valB !== null ? m.valB : '';
+                csv += `"${m.subsystem}","${m.metric}","${valA}","${valB}","${m.unit}","${m.deltaStr}"\n`;
+            });
+        } else {
+            csv = `"Subsystem","Metric","Value","Unit"\n`;
+            parsedMetrics.forEach(m => {
+                const valA = m.valA !== null ? m.valA : '';
+                csv += `"${m.subsystem}","${m.metric}","${valA}","${m.unit}"\n`;
+            });
+        }
+        return csv;
+    }
+
+    // Show Export Modal
+    function showExportModal(title, description, content, filename, mimeType) {
+        modalTitle.textContent = title;
+        modalDescription.textContent = description;
+        modalTextarea.value = content;
+        activeExportFileContent = content;
+        activeExportFileName = filename;
+        activeExportMime = mimeType;
+        exportModal.classList.remove('hidden');
+        exportMenu.classList.add('hidden');
+    }
+
+    function closeExportModal() {
+        exportModal.classList.add('hidden');
+    }
+
+    function downloadActiveExportFile() {
+        if (!activeExportFileContent) return;
+        const blob = new Blob([activeExportFileContent], { type: activeExportMime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = activeExportFileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     // Handle uploaded/imported file
@@ -838,6 +1356,105 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Export Dropdown menu toggle
+        exportMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportMenu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.export-dropdown')) {
+                exportMenu.classList.add('hidden');
+            }
+        });
+
+        // Export Actions
+        exportMarkdownBtn.addEventListener('click', () => {
+            if (!activeRun) { alert("Please select an active run first."); return; }
+            const md = generateMarkdownReport();
+            showExportModal("Export Markdown Report", "Preview the GitHub-flavored markdown report below:", md, "cbench_report.md", "text/markdown");
+        });
+
+        exportCsvBtn.addEventListener('click', () => {
+            if (!activeRun) { alert("Please select an active run first."); return; }
+            const csv = generateCsvContent();
+            showExportModal("Export Metrics CSV", "Preview CSV output below:", csv, "cbench_metrics.csv", "text/csv");
+        });
+
+        exportJsonBtn.addEventListener('click', () => {
+            if (!activeRun) { alert("Please select an active run first."); return; }
+            const jsonStr = JSON.stringify(activeRun, null, 2);
+            showExportModal("Export Run JSON", "Download run raw telemetry data:", jsonStr, `${activeRun.name.replace(/\s+/g, '_')}.json`, "application/json");
+        });
+
+        // Modal event handlers
+        closeModalBtn.addEventListener('click', closeExportModal);
+        modalBackdrop.addEventListener('click', closeExportModal);
+        copyModalBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(modalTextarea.value).then(() => {
+                const origText = copyModalBtn.innerHTML;
+                copyModalBtn.innerHTML = `<span class="material-icons-round">check</span> Copied!`;
+                setTimeout(() => { copyModalBtn.innerHTML = origText; }, 2000);
+            });
+        });
+        downloadModalBtn.addEventListener('click', downloadActiveExportFile);
+
+        // Chart Type Toggles (Radar vs Bar)
+        chartTypeRadarBtn.addEventListener('click', () => {
+            currentChartType = 'radar';
+            chartTypeRadarBtn.classList.add('active');
+            chartTypeBarBtn.classList.remove('active');
+            updateChart();
+        });
+        chartTypeBarBtn.addEventListener('click', () => {
+            currentChartType = 'bar';
+            chartTypeBarBtn.classList.add('active');
+            chartTypeRadarBtn.classList.remove('active');
+            updateChart();
+        });
+
+        // Search and filter in metrics table
+        metricSearchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            if (searchQuery) clearSearchBtn.classList.remove('hidden');
+            else clearSearchBtn.classList.add('hidden');
+            renderMetricsTable();
+        });
+
+        clearSearchBtn.addEventListener('click', () => {
+            metricSearchInput.value = '';
+            searchQuery = '';
+            clearSearchBtn.classList.add('hidden');
+            renderMetricsTable();
+        });
+
+        subsystemFilterSelect.addEventListener('change', (e) => {
+            selectedSubsystemFilter = e.target.value;
+            populateSubsystemFilterControls();
+            renderMetricsTable();
+        });
+
+        subsystemChipsContainer.addEventListener('click', (e) => {
+            const chip = e.target.closest('.filter-chip');
+            if (!chip) return;
+            selectedSubsystemFilter = chip.getAttribute('data-sub');
+            populateSubsystemFilterControls();
+            renderMetricsTable();
+        });
+
+        // Table Sorting Header clicks
+        document.querySelectorAll('#metricsTableHeader th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.getAttribute('data-sort');
+                if (sortColumn === col) {
+                    sortAscending = !sortAscending;
+                } else {
+                    sortColumn = col;
+                    sortAscending = true;
+                }
+                renderMetricsTable();
+            });
+        });
+
         // Rename active run
         renameActiveBtn.addEventListener('click', () => {
             if (!activeRun) return;
@@ -864,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Filter select change
         radarFilter.addEventListener('change', () => {
-            updateRadarChart(radarFilter.value);
+            updateChart();
         });
 
         // Sample Files loader
