@@ -55,7 +55,7 @@ void thermal_stop(const char *subsystem) {
         
         if (peak_temp >= 85000) {
             pr_info("💡 KERNEL PATCH ADVICE (%s): Severe Thermal Throttling detected (>=85C). The CPU governor has likely dropped frequencies, invalidating throughput metrics.\n", subsystem);
-            report_add_heuristic(subsystem, "Severe Thermal Throttling detected. CPU governor likely dropped frequencies.");
+            report_add_heuristic_severity(subsystem, "Severe Thermal Throttling detected (>=85C). CPU governor likely dropped frequencies.", HEURISTIC_CRITICAL);
         }
     }
 }

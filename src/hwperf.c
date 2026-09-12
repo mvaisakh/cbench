@@ -301,6 +301,7 @@ void hwperf_stop(const char *subsystem) {
                     report_add_metric(subsystem, "hw_branch_miss_rate", branch_miss_rate, "%");
                     if (branch_miss_rate > 2.0) {
                         pr_info("💡 KERNEL PATCH ADVICE (%s): High branch mispredictions. Reorganize code paths, use likely()/unlikely() macros, or avoid unpredictable branches.\n", subsystem);
+                        report_add_heuristic_severity(subsystem, "High branch mispredictions (>2%). Reorganize branch paths or use likely()/unlikely().", HEURISTIC_WARN);
                     }
                 }
 
@@ -310,12 +311,13 @@ void hwperf_stop(const char *subsystem) {
                     report_add_metric(subsystem, "hw_tlb_miss_rate", tlb_miss_rate, "%");
                     if (tlb_miss_rate > 1.0) {
                         pr_info("💡 KERNEL PATCH ADVICE (%s): High Data TLB misses detected. The CPU is struggling with page table walks. Consider using HugePages.\n", subsystem);
+                        report_add_heuristic_severity(subsystem, "High Data TLB misses detected (>1%). Consider using HugePages or reviewing page table footprint.", HEURISTIC_WARN);
                     }
                 }
 
                 if (miss_rate > 5.0) {
                     pr_info("💡 KERNEL PATCH ADVICE (%s): High L1 hardware cache miss rate. CPU is stalling on memory. Optimize data structures for cache locality.\n", subsystem);
-                    report_add_heuristic(subsystem, "High hardware cache miss rate. Optimize data structures for cache locality.");
+                    report_add_heuristic_severity(subsystem, "High hardware cache miss rate (>5%). Optimize data structures for cache locality.", HEURISTIC_WARN);
                 }
             }
         }

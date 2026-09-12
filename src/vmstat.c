@@ -52,6 +52,6 @@ void vmstat_stop(const char *subsystem) {
     
     if (delta > 0) {
         pr_info("💡 KERNEL PATCH ADVICE (%s): Major page faults detected. The device is actively swapping to zRAM or Disk, causing massive latency spikes.\n", subsystem);
-        report_add_heuristic(subsystem, "Major page faults detected. Active zRAM/Disk swapping causing latency spikes.");
+        report_add_heuristic_severity(subsystem, "Major page faults detected. Active zRAM/Disk swapping causing latency spikes.", HEURISTIC_WARN);
     }
 }
