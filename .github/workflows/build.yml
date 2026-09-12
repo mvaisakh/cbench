@@ -60,7 +60,7 @@ jobs:
       id: tag
       run: |
         SHORT_SHA=$(git rev-parse --short HEAD)
-        echo "tag=v1-${SHORT_SHA}" >> $GITHUB_OUTPUT
+        echo "tag=v2-${SHORT_SHA}" >> $GITHUB_OUTPUT
 
     - name: Create Release
       run: |
