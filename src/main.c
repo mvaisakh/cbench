@@ -49,7 +49,8 @@ static void print_usage(const char *prog) {
     pr_info("  -q       Run SQLite WAL Emulation benchmark\n");
     pr_info("  -Z       Run ZRAM Compression Stress benchmark\n");
     pr_info("  -E       Run EAS Ping-Pong benchmark\n");
-    pr_info("  -j       Output JSON report at the end\n");
+    pr_info("  -j       Output JSON report at the end (to stdout)\n");
+    pr_info("  -o FILE  Write JSON report directly to specified file\n");
     pr_info("  -h       Print this help\n");
 }
 
@@ -60,12 +61,14 @@ int main(int argc, char **argv)
     int run_rng = 0, run_net = 0, run_futex = 0, run_crypto = 0, run_zero = 0;
     int run_rcu = 0, run_neon = 0, run_sqlite = 0, run_zram = 0, run_eas = 0;
     int output_json = 0;
+    char *output_file = NULL;
 
-    while ((opt = getopt(argc, argv, "ad:t:sSmijrnfczuNqZEh")) != -1) {
+    while ((opt = getopt(argc, argv, "ad:t:o:sSmijrnfczuNqZEh")) != -1) {
         switch (opt) {
             case 'a': run_all = 1; break;
             case 'd': benchmark_duration_sec = atoi(optarg); break;
             case 't': num_threads = atoi(optarg); break;
+            case 'o': output_file = optarg; break;
             case 's': run_syscall = 1; break;
             case 'S': run_sched = 1; break;
             case 'm': run_mem = 1; break;
@@ -113,6 +116,7 @@ int main(int argc, char **argv)
     if (num_threads <= 0) {
         num_threads = system_topo.total_cpus;
     }
+    report_set_metadata(benchmark_duration_sec, num_threads);
     pr_info("Starting Cerium Benchmarking (cbench) with %d thread(s), %d seconds per test...\n", num_threads, benchmark_duration_sec);
 
     if (run_syscall) {
@@ -202,6 +206,13 @@ int main(int argc, char **argv)
     }
 
     pr_info("\nRun complete.\n");
+
+    /* Print user-friendly terminal scorecard */
+    report_print_summary();
+
+    if (output_file) {
+        report_write_json(output_file);
+    }
 
     if (output_json) {
         report_print_json();
