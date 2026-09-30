@@ -1461,11 +1461,46 @@ document.addEventListener('DOMContentLoaded', () => {
         // Export Dropdown menu toggle
         exportMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            exportMenu.classList.toggle('hidden');
+            const isHidden = exportMenu.classList.toggle('hidden');
+            exportMenuBtn.setAttribute('aria-expanded', !isHidden);
         });
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.export-dropdown')) {
                 exportMenu.classList.add('hidden');
+                exportMenuBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (!exportMenu.classList.contains('hidden')) {
+                    exportMenu.classList.add('hidden');
+                    exportMenuBtn.setAttribute('aria-expanded', 'false');
+                    exportMenuBtn.focus();
+                } else if (!exportModal.classList.contains('hidden')) {
+                    closeExportModal();
+                }
+            }
+        });
+        
+        exportModal.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                const focusableElements = exportModal.querySelectorAll('button, textarea');
+                if (focusableElements.length === 0) return;
+                const first = focusableElements[0];
+                const last = focusableElements[focusableElements.length - 1];
+                
+                if (e.shiftKey) {
+                    if (document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    }
+                } else {
+                    if (document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
             }
         });
 
