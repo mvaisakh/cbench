@@ -35,6 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTitle = document.getElementById('modalTitle');
     const modalDescription = document.getElementById('modalDescription');
     const modalTextarea = document.getElementById('modalTextarea');
+    const modalViewToggleGroup = document.getElementById('modalViewToggleGroup');
+    const modalRawBtn = document.getElementById('modalRawBtn');
+    const modalPreviewBtn = document.getElementById('modalPreviewBtn');
+    const modalHtmlPreview = document.getElementById('modalHtmlPreview');
     const copyModalBtn = document.getElementById('copyModalBtn');
     const downloadModalBtn = document.getElementById('downloadModalBtn');
 
@@ -74,12 +78,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartTitle = document.getElementById('chartTitle');
     const chartSubtitle = document.getElementById('chartSubtitle');
     const radarFilter = document.getElementById('radarFilter');
+    const radarFilterContainer = document.getElementById('radarFilterContainer');
     const chartTypeRadarBtn = document.getElementById('chartTypeRadarBtn');
     const chartTypeBarBtn = document.getElementById('chartTypeBarBtn');
+    const chartTypeTrendBtn = document.getElementById('chartTypeTrendBtn');
+    const trendMetricFilterContainer = document.getElementById('trendMetricFilterContainer');
+    const trendMetricSelect = document.getElementById('trendMetricSelect');
     let radarChartInstance = null;
-    let currentChartType = 'radar'; // 'radar' or 'bar'
+    let currentChartType = 'radar'; // 'radar', 'bar', or 'trend'
     let renderedChartType = null;
     let renderedComparisonMode = null;
+    let selectedTrendMetric = '';
     
     // Metrics Table & Search/Filter
     const metricsTableTitle = document.getElementById('metricsTableTitle');
@@ -732,15 +741,27 @@ document.addEventListener('DOMContentLoaded', () => {
         adviceArray.forEach(h => {
             const severity = h.severity || 'warning';
             const badgeClass = severity === 'critical' ? 'severity-critical' : (severity === 'info' ? 'severity-info' : 'severity-warning');
-            containerElement.innerHTML += `
-                <li>
-                    <div class="heuristic-meta">
-                        <strong>${h.subsystem}</strong>
-                        <span class="severity-badge ${badgeClass}">${severity}</span>
-                    </div>
-                    <span>${h.message}</span>
-                </li>
+            const li = document.createElement('li');
+            li.className = 'heuristic-item-interactive';
+            li.title = `Click to view ${h.subsystem} metrics in Overview tab`;
+            li.innerHTML = `
+                <div class="heuristic-meta">
+                    <strong>${h.subsystem}</strong>
+                    <span class="severity-badge ${badgeClass}">${severity}</span>
+                </div>
+                <span>${h.message}</span>
             `;
+            li.addEventListener('click', () => {
+                switchTab('tabOverview');
+                // Scroll to and pulse telemetry card or relevant element
+                if (telemetryHighlightsCard && !telemetryHighlightsCard.classList.contains('hidden')) {
+                    telemetryHighlightsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    telemetryHighlightsCard.classList.remove('highlight-pulse');
+                    void telemetryHighlightsCard.offsetWidth; // trigger reflow
+                    telemetryHighlightsCard.classList.add('highlight-pulse');
+                }
+            });
+            containerElement.appendChild(li);
         });
     }
 
@@ -943,11 +964,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         filtered.forEach(m => {
             const tr = document.createElement('tr');
+            const valFormatted = m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-';
+            const sparkPct = comparisonRun && m.valB && m.valA ? Math.min(100, Math.max(10, Math.round(m.relativePerf))) : 100;
+            const sparkClass = m.deltaClass === 'delta-positive' ? 'spark-positive' : (m.deltaClass === 'delta-negative' ? 'spark-negative' : 'spark-neutral');
+            const sparkBar = comparisonRun && m.valB && m.valA ? `<div class="sparkline-bar"><div class="sparkline-fill ${sparkClass}" style="width:${sparkPct}%"></div></div>` : '';
+
             if (comparisonRun) {
                 tr.innerHTML = `
                     <td><strong>${m.subsystem}</strong></td>
                     <td>${m.metric}</td>
-                    <td>${m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                    <td><div class="val-with-spark">${valFormatted}${sparkBar}</div></td>
                     <td class="delta-neutral">${m.valB !== null ? m.valB.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
                     <td>${m.unit}</td>
                     <td class="${m.deltaClass}">${m.deltaStr}</td>
@@ -956,7 +982,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.innerHTML = `
                     <td><strong>${m.subsystem}</strong></td>
                     <td>${m.metric}</td>
-                    <td>${m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                    <td>${valFormatted}</td>
                     <td>${m.unit}</td>
                 `;
             }
@@ -991,8 +1017,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
     }
 
-    // Unified Chart Rendering (Radar or Bar; Comparison or Single Run)
+    // Unified Chart Rendering (Radar, Bar, or Historical Trend)
     function updateChart() {
+        if (currentChartType === 'trend') {
+            updateTrendChart();
+            return;
+        }
+
+        radarFilterContainer.classList.remove('hidden');
+        trendMetricFilterContainer.classList.add('hidden');
+        chartTitle.textContent = comparisonRun 
+            ? (currentChartType === 'radar' ? "Performance Comparison Radar" : "Relative Performance Breakdown") 
+            : "Subsystem Performance & Energy Breakdown";
+        chartSubtitle.textContent = comparisonRun 
+            ? `Comparing against baseline: ${comparisonRun.name}` 
+            : `Single run analysis for ${activeRun ? activeRun.name : ''}`;
+
         const filterValue = radarFilter.value;
         const validMetrics = parsedMetrics.filter(m => (comparisonRun ? (m.valA > 0 && m.valB > 0) : (m.valA > 0)));
 
@@ -1261,6 +1301,120 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Historical Trend Chart across all stored runs
+    function updateTrendChart() {
+        radarFilterContainer.classList.add('hidden');
+        trendMetricFilterContainer.classList.remove('hidden');
+
+        // Collect all distinct metric names across all runs
+        const metricSubMap = {};
+        runs.forEach(r => {
+            (r.metrics || []).forEach(m => {
+                if (!metricSubMap[m.metric]) {
+                    metricSubMap[m.metric] = { subsystem: m.subsystem, unit: m.unit };
+                }
+            });
+        });
+
+        const metricKeys = Object.keys(metricSubMap).sort();
+        if (metricKeys.length === 0) return;
+
+        if (!selectedTrendMetric || !metricSubMap[selectedTrendMetric]) {
+            selectedTrendMetric = metricKeys[0];
+        }
+
+        // Populate trend metric selector
+        trendMetricSelect.innerHTML = '';
+        metricKeys.forEach(key => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = `[${metricSubMap[key].subsystem}] ${key} (${metricSubMap[key].unit})`;
+            if (key === selectedTrendMetric) opt.selected = true;
+            trendMetricSelect.appendChild(opt);
+        });
+
+        const activeMeta = metricSubMap[selectedTrendMetric] || { subsystem: '', unit: '' };
+        chartTitle.textContent = `Historical Trend: ${selectedTrendMetric}`;
+        chartSubtitle.textContent = `Tracking ${selectedTrendMetric} (${activeMeta.unit}) across ${runs.length} stored runs (chronological order)`;
+
+        // Chronological order (runs is newest-first in memory, so reverse for timeline)
+        const chronoRuns = runs.slice().reverse();
+        const labels = chronoRuns.map((r, idx) => {
+            const dateStr = new Date(r.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return [r.name.length > 20 ? r.name.substr(0, 18) + '...' : r.name, dateStr];
+        });
+
+        const dataPoints = chronoRuns.map(r => {
+            const found = (r.metrics || []).find(m => m.metric === selectedTrendMetric);
+            return found ? found.value : null;
+        });
+
+        if (radarChartInstance) {
+            radarChartInstance.destroy();
+            radarChartInstance = null;
+        }
+
+        renderedChartType = 'trend';
+        renderedComparisonMode = null;
+
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        radarChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: `${selectedTrendMetric} (${activeMeta.unit})`,
+                        data: dataPoints,
+                        borderColor: '#a8c7fa',
+                        backgroundColor: 'rgba(168, 199, 250, 0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#a8c7fa',
+                        pointBorderColor: '#fff',
+                        pointHoverRadius: 6,
+                        pointRadius: 4,
+                        borderWidth: 2.5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 500, easing: 'easeOutQuart' },
+                scales: {
+                    x: {
+                        grid: { color: getChartGridColor() },
+                        ticks: { color: getChartTextColor(), font: { family: 'Inter', size: 10 } }
+                    },
+                    y: {
+                        grid: { color: getChartGridColor() },
+                        ticks: { color: getChartTextColor() }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: getChartTextColor(), font: { family: 'Inter', size: 12, weight: '500' } }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#e3e3e3',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return `${selectedTrendMetric}: ${context.parsed.y !== null ? context.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'} ${activeMeta.unit}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     // Generate Markdown Benchmark Report
     function generateMarkdownReport() {
         if (!activeRun) return '';
@@ -1352,6 +1506,65 @@ document.addEventListener('DOMContentLoaded', () => {
         return csv;
     }
 
+    // Simple markdown-to-HTML parser for rendered preview
+    function renderMarkdownToHtml(md) {
+        if (!md) return '';
+        let html = md
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        // Headers
+        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+        // Bold & Italic
+        html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+        html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+
+        // Tables
+        const lines = html.split('\n');
+        let inTable = false;
+        let tableHtml = '';
+        let outputLines = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line.startsWith('|') && line.endsWith('|')) {
+                // Table divider row: | :--- | :--- |
+                if (line.match(/^\|(\s*:?-+:?\s*\|)+$/)) {
+                    continue; // Skip divider row
+                }
+                const cells = line.split('|').slice(1, -1).map(c => c.trim());
+                if (!inTable) {
+                    inTable = true;
+                    tableHtml = '<table><thead><tr>' + cells.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+                } else {
+                    tableHtml += '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
+                }
+            } else {
+                if (inTable) {
+                    tableHtml += '</tbody></table>';
+                    outputLines.push(tableHtml);
+                    inTable = false;
+                    tableHtml = '';
+                }
+                if (line.startsWith('- ')) {
+                    outputLines.push(`<li>${line.substring(2)}</li>`);
+                } else if (line) {
+                    outputLines.push(`<p>${line}</p>`);
+                }
+            }
+        }
+        if (inTable) {
+            tableHtml += '</tbody></table>';
+            outputLines.push(tableHtml);
+        }
+
+        return outputLines.join('\n');
+    }
+
     // Show Export Modal
     function showExportModal(title, description, content, filename, mimeType) {
         previousFocusElement = document.activeElement;
@@ -1361,6 +1574,21 @@ document.addEventListener('DOMContentLoaded', () => {
         activeExportFileContent = content;
         activeExportFileName = filename;
         activeExportMime = mimeType;
+
+        // Reset Raw/Preview mode
+        if (mimeType === 'text/markdown') {
+            modalViewToggleGroup.classList.remove('hidden');
+            modalRawBtn.classList.add('active');
+            modalPreviewBtn.classList.remove('active');
+            modalTextarea.classList.remove('hidden');
+            modalHtmlPreview.classList.add('hidden');
+            modalHtmlPreview.innerHTML = renderMarkdownToHtml(content);
+        } else {
+            modalViewToggleGroup.classList.add('hidden');
+            modalTextarea.classList.remove('hidden');
+            modalHtmlPreview.classList.add('hidden');
+        }
+
         exportModal.classList.remove('hidden');
         exportMenu.classList.add('hidden');
         exportMenuBtn.setAttribute('aria-expanded', 'false');
@@ -1526,6 +1754,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Modal event handlers
         closeModalBtn.addEventListener('click', closeExportModal);
         modalBackdrop.addEventListener('click', closeExportModal);
+        modalRawBtn.addEventListener('click', () => {
+            modalRawBtn.classList.add('active');
+            modalPreviewBtn.classList.remove('active');
+            modalTextarea.classList.remove('hidden');
+            modalHtmlPreview.classList.add('hidden');
+        });
+        modalPreviewBtn.addEventListener('click', () => {
+            modalPreviewBtn.classList.add('active');
+            modalRawBtn.classList.remove('active');
+            modalTextarea.classList.add('hidden');
+            modalHtmlPreview.classList.remove('hidden');
+        });
         copyModalBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(modalTextarea.value).then(() => {
                 const origText = copyModalBtn.innerHTML;
@@ -1535,18 +1775,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         downloadModalBtn.addEventListener('click', downloadActiveExportFile);
 
-        // Chart Type Toggles (Radar vs Bar)
+        // Chart Type Toggles (Radar vs Bar vs Trend)
         chartTypeRadarBtn.addEventListener('click', () => {
             currentChartType = 'radar';
             chartTypeRadarBtn.classList.add('active');
             chartTypeBarBtn.classList.remove('active');
+            chartTypeTrendBtn.classList.remove('active');
             updateChart();
         });
         chartTypeBarBtn.addEventListener('click', () => {
             currentChartType = 'bar';
             chartTypeBarBtn.classList.add('active');
             chartTypeRadarBtn.classList.remove('active');
+            chartTypeTrendBtn.classList.remove('active');
             updateChart();
+        });
+        chartTypeTrendBtn.addEventListener('click', () => {
+            currentChartType = 'trend';
+            chartTypeTrendBtn.classList.add('active');
+            chartTypeRadarBtn.classList.remove('active');
+            chartTypeBarBtn.classList.remove('active');
+            updateChart();
+        });
+
+        trendMetricSelect.addEventListener('change', (e) => {
+            selectedTrendMetric = e.target.value;
+            updateTrendChart();
         });
 
         // Debounce utility

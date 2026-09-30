@@ -507,6 +507,37 @@ tbody tr:hover {
     color: var(--neutral-color);
 }
 
+.val-with-spark {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sparkline-bar {
+    width: 60px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.sparkline-fill {
+    height: 100%;
+    border-radius: 2px;
+}
+
+.spark-positive {
+    background-color: var(--success-color);
+}
+
+.spark-negative {
+    background-color: var(--error-color);
+}
+
+.spark-neutral {
+    background-color: var(--neutral-color);
+}
+
 /* Charts */
 .charts-container {
     display: flex;
@@ -593,6 +624,26 @@ tbody tr:hover {
     border-radius: 8px;
     border-left: 4px solid var(--md-sys-color-primary);
     font-size: 0.95rem;
+    transition: all var(--transition-speed);
+}
+
+.heuristic-item-interactive {
+    cursor: pointer;
+}
+
+.heuristic-item-interactive:hover {
+    transform: translateX(4px);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+@keyframes highlightPulse {
+    0% { box-shadow: 0 0 0 0 rgba(168, 199, 250, 0.7); }
+    70% { box-shadow: 0 0 0 12px rgba(168, 199, 250, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(168, 199, 250, 0); }
+}
+
+.highlight-pulse {
+    animation: highlightPulse 1.2s ease-out;
 }
 
 .heuristic-list li strong {
@@ -1307,6 +1358,14 @@ th.sorted-desc .sort-icon {
     color: var(--neutral-color);
 }
 
+.modal-body-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
 .modal-textarea {
     width: 100%;
     height: 350px;
@@ -1320,6 +1379,49 @@ th.sorted-desc .sort-icon {
     line-height: 1.5;
     resize: vertical;
     outline: none;
+}
+
+.modal-html-preview {
+    width: 100%;
+    height: 350px;
+    background-color: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-background);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1.25rem;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    overflow-y: auto;
+}
+
+.modal-html-preview h1, .modal-html-preview h2, .modal-html-preview h3 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--md-sys-color-primary);
+}
+
+.modal-html-preview h1 { font-size: 1.25rem; }
+.modal-html-preview h2 { font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; }
+
+.modal-html-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.8rem;
+}
+
+.modal-html-preview th, .modal-html-preview td {
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-html-preview th {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.modal-html-preview ul {
+    margin-left: 1.25rem;
+    margin-bottom: 1rem;
 }
 
 .modal-actions {

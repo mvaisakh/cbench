@@ -217,12 +217,21 @@
                                         <button class="btn-toggle" data-chart-type="bar" id="chartTypeBarBtn" title="Bar Chart">
                                             <span class="material-icons-round">bar_chart</span> Bar
                                         </button>
+                                        <button class="btn-toggle" data-chart-type="trend" id="chartTypeTrendBtn" title="Historical Trends">
+                                            <span class="material-icons-round">show_chart</span> Trend
+                                        </button>
                                     </div>
-                                    <div class="filter-container">
+                                    <div class="filter-container" id="radarFilterContainer">
                                         <label for="radarFilter">Subsystem:</label>
                                         <select id="radarFilter" class="select-input">
                                             <option value="aggregate">All Subsystems (Aggregate)</option>
                                             <option value="all">All Metrics (Detailed)</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-container hidden" id="trendMetricFilterContainer">
+                                        <label for="trendMetricSelect">Metric:</label>
+                                        <select id="trendMetricSelect" class="select-input">
+                                            <!-- Dynamically populated -->
                                         </select>
                                     </div>
                                 </div>
@@ -302,8 +311,15 @@
                             <button id="closeModalBtn" class="btn-icon"><span class="material-icons-round">close</span></button>
                         </div>
                         <div class="modal-body">
-                            <p class="modal-description" id="modalDescription">Preview generated report below. You can copy it directly to clipboard or download as a file.</p>
+                            <div class="modal-body-header">
+                                <p class="modal-description" id="modalDescription">Preview generated report below. You can copy it directly to clipboard or download as a file.</p>
+                                <div class="btn-toggle-group hidden" id="modalViewToggleGroup">
+                                    <button class="btn-toggle active" id="modalRawBtn">Raw</button>
+                                    <button class="btn-toggle" id="modalPreviewBtn">Preview</button>
+                                </div>
+                            </div>
                             <textarea id="modalTextarea" class="modal-textarea" readonly></textarea>
+                            <div id="modalHtmlPreview" class="modal-html-preview hidden"></div>
                         </div>
                         <div class="modal-actions">
                             <button id="copyModalBtn" class="btn btn-secondary"><span class="material-icons-round">content_copy</span> Copy to Clipboard</button>
