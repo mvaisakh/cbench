@@ -1330,3 +1330,58 @@ th.sorted-desc .sort-icon {
     padding-top: 1rem;
     margin-top: 1rem;
 }
+
+/* Dashboard Tabs */
+.dashboard-tabs {
+    display: flex;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: sticky;
+    top: 80px; /* Below app-bar, or adjust based on layout */
+    z-index: 50;
+    background-color: var(--md-sys-color-background);
+    padding: 0 1rem;
+    margin-bottom: 2rem;
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.75rem 1.25rem;
+    background: transparent;
+    color: var(--neutral-color);
+    border: none;
+    border-radius: 24px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-btn:hover {
+    background-color: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-background);
+}
+
+.tab-btn.active {
+    color: var(--md-sys-color-primary);
+    background-color: rgba(168, 199, 250, 0.08); /* subtle background highlight */
+    border-bottom: 3px solid var(--md-sys-color-primary);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.tab-panel {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .dashboard-tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 0.5rem;
+    }
+}

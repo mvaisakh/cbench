@@ -107,157 +107,185 @@
                     </div>
                 </div>
 
-                <!-- Score Dashboard (Single Run or Comparison) -->
-                <div class="score-dashboard" id="scoreDashboard">
-                    <!-- Left/Current Score Card -->
-                    <div class="score-card main-score-card">
-                        <div class="score-header" id="scoreHeaderLeft">Benchmark Score</div>
-                        <div class="total-score" id="scoreLeft">--</div>
-                        <div class="sub-scores">
-                            <div class="sub-score"><span>Compute</span><strong id="compLeft">--</strong></div>
-                            <div class="sub-score"><span>Memory & I/O</span><strong id="memLeft">--</strong></div>
-                            <div class="sub-score"><span>System & Crypto</span><strong id="sysLeft">--</strong></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Middle Delta Indicator (Shown only in Comparison Mode) -->
-                    <div class="score-vs-container hidden" id="comparisonVS">
-                        <div class="vs-circle"><span class="material-icons-round">bolt</span></div>
-                        <div id="scoreDelta" class="score-delta delta-neutral">--</div>
-                    </div>
+                <!-- Tab Navigation -->
+                <nav class="dashboard-tabs">
+                    <button class="tab-btn active" data-tab="tabOverview">
+                        <span class="material-icons-round">dashboard</span> Overview
+                    </button>
+                    <button class="tab-btn" data-tab="tabCharts">
+                        <span class="material-icons-round">bar_chart</span> Charts
+                    </button>
+                    <button class="tab-btn" data-tab="tabMetrics">
+                        <span class="material-icons-round">table_chart</span> Metrics
+                    </button>
+                    <button class="tab-btn" data-tab="tabAdvice">
+                        <span class="material-icons-round">lightbulb</span> Advice
+                    </button>
+                </nav>
 
-                    <!-- Right/Baseline Score Card (Shown only in Comparison Mode) -->
-                    <div class="score-card baseline-score-card hidden" id="comparisonScoreCard">
-                        <div class="score-header">Baseline Score</div>
-                        <div class="total-score" id="scoreBaseline">--</div>
-                        <div class="sub-scores">
-                            <div class="sub-score"><span>Compute</span><strong id="compBaseline">--</strong></div>
-                            <div class="sub-score"><span>Memory & I/O</span><strong id="memBaseline">--</strong></div>
-                            <div class="sub-score"><span>System & Crypto</span><strong id="sysBaseline">--</strong></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Comparison Summary stats (Shown only in Comparison Mode) -->
-                <div class="summary-grid hidden" id="comparisonSummary">
-                    <div class="summary-card stat-improved">
-                        <span class="material-icons-round stat-icon">trending_up</span>
-                        <div class="stat-content">
-                            <h4>Improvements</h4>
-                            <h2 id="totalImprovements">0</h2>
-                        </div>
-                    </div>
-                    <div class="summary-card stat-regressed">
-                        <span class="material-icons-round stat-icon">trending_down</span>
-                        <div class="stat-content">
-                            <h4>Regressions</h4>
-                            <h2 id="totalRegressions">0</h2>
-                        </div>
-                    </div>
-                    <div class="summary-card stat-neutral">
-                        <span class="material-icons-round stat-icon">horizontal_rule</span>
-                        <div class="stat-content">
-                            <h4>Unchanged</h4>
-                            <h2 id="totalUnchanged">0</h2>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- System Info Card -->
-                <div class="sysinfo-card card">
-                    <h2 id="sysinfoTitle">System Information</h2>
-                    <div id="sysinfoContent" class="sysinfo-grid"></div>
-                </div>
-
-                <!-- Telemetry & Hardware Highlights Card -->
-                <div class="card telemetry-highlights-card" id="telemetryHighlightsCard">
-                    <h2><span class="material-icons-round">speed</span> Hardware Telemetry & Vital Signs</h2>
-                    <div class="telemetry-grid" id="telemetryGrid">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-
-                <!-- Charts Section (Radar / Bar Comparison & Single Run Breakdown) -->
-                <div class="charts-container">
-                    <div class="chart-card card">
-                        <div class="chart-header">
-                            <div class="chart-title-group">
-                                <h2 id="chartTitle">Performance Analysis</h2>
-                                <span class="chart-subtitle" id="chartSubtitle">Interactive Visualization</span>
+                <!-- Overview Tab -->
+                <div class="tab-panel" id="tabOverview">
+                    <!-- Score Dashboard (Single Run or Comparison) -->
+                    <div class="score-dashboard" id="scoreDashboard">
+                        <!-- Left/Current Score Card -->
+                        <div class="score-card main-score-card">
+                            <div class="score-header" id="scoreHeaderLeft">Benchmark Score</div>
+                            <div class="total-score" id="scoreLeft">--</div>
+                            <div class="sub-scores">
+                                <div class="sub-score"><span>Compute</span><strong id="compLeft">--</strong></div>
+                                <div class="sub-score"><span>Memory & I/O</span><strong id="memLeft">--</strong></div>
+                                <div class="sub-score"><span>System & Crypto</span><strong id="sysLeft">--</strong></div>
                             </div>
-                            <div class="chart-controls">
-                                <div class="btn-toggle-group" id="chartTypeToggleGroup">
-                                    <button class="btn-toggle active" data-chart-type="radar" id="chartTypeRadarBtn" title="Radar Chart">
-                                        <span class="material-icons-round">radar</span> Radar
-                                    </button>
-                                    <button class="btn-toggle" data-chart-type="bar" id="chartTypeBarBtn" title="Bar Chart">
-                                        <span class="material-icons-round">bar_chart</span> Bar
-                                    </button>
+                        </div>
+                        
+                        <!-- Middle Delta Indicator (Shown only in Comparison Mode) -->
+                        <div class="score-vs-container hidden" id="comparisonVS">
+                            <div class="vs-circle"><span class="material-icons-round">bolt</span></div>
+                            <div id="scoreDelta" class="score-delta delta-neutral">--</div>
+                        </div>
+
+                        <!-- Right/Baseline Score Card (Shown only in Comparison Mode) -->
+                        <div class="score-card baseline-score-card hidden" id="comparisonScoreCard">
+                            <div class="score-header">Baseline Score</div>
+                            <div class="total-score" id="scoreBaseline">--</div>
+                            <div class="sub-scores">
+                                <div class="sub-score"><span>Compute</span><strong id="compBaseline">--</strong></div>
+                                <div class="sub-score"><span>Memory & I/O</span><strong id="memBaseline">--</strong></div>
+                                <div class="sub-score"><span>System & Crypto</span><strong id="sysBaseline">--</strong></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Summary stats (Shown only in Comparison Mode) -->
+                    <div class="summary-grid hidden" id="comparisonSummary">
+                        <div class="summary-card stat-improved">
+                            <span class="material-icons-round stat-icon">trending_up</span>
+                            <div class="stat-content">
+                                <h4>Improvements</h4>
+                                <h2 id="totalImprovements">0</h2>
+                            </div>
+                        </div>
+                        <div class="summary-card stat-regressed">
+                            <span class="material-icons-round stat-icon">trending_down</span>
+                            <div class="stat-content">
+                                <h4>Regressions</h4>
+                                <h2 id="totalRegressions">0</h2>
+                            </div>
+                        </div>
+                        <div class="summary-card stat-neutral">
+                            <span class="material-icons-round stat-icon">horizontal_rule</span>
+                            <div class="stat-content">
+                                <h4>Unchanged</h4>
+                                <h2 id="totalUnchanged">0</h2>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Info Card -->
+                    <div class="sysinfo-card card">
+                        <h2 id="sysinfoTitle">System Information</h2>
+                        <div id="sysinfoContent" class="sysinfo-grid"></div>
+                    </div>
+
+                    <!-- Telemetry & Hardware Highlights Card -->
+                    <div class="card telemetry-highlights-card" id="telemetryHighlightsCard">
+                        <h2><span class="material-icons-round">speed</span> Hardware Telemetry & Vital Signs</h2>
+                        <div class="telemetry-grid" id="telemetryGrid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Tab -->
+                <div class="tab-panel hidden" id="tabCharts">
+                    <!-- Charts Section (Radar / Bar Comparison & Single Run Breakdown) -->
+                    <div class="charts-container">
+                        <div class="chart-card card">
+                            <div class="chart-header">
+                                <div class="chart-title-group">
+                                    <h2 id="chartTitle">Performance Analysis</h2>
+                                    <span class="chart-subtitle" id="chartSubtitle">Interactive Visualization</span>
                                 </div>
-                                <div class="filter-container">
-                                    <label for="radarFilter">Subsystem:</label>
-                                    <select id="radarFilter" class="select-input">
-                                        <option value="aggregate">All Subsystems (Aggregate)</option>
-                                        <option value="all">All Metrics (Detailed)</option>
-                                    </select>
+                                <div class="chart-controls">
+                                    <div class="btn-toggle-group" id="chartTypeToggleGroup">
+                                        <button class="btn-toggle active" data-chart-type="radar" id="chartTypeRadarBtn" title="Radar Chart">
+                                            <span class="material-icons-round">radar</span> Radar
+                                        </button>
+                                        <button class="btn-toggle" data-chart-type="bar" id="chartTypeBarBtn" title="Bar Chart">
+                                            <span class="material-icons-round">bar_chart</span> Bar
+                                        </button>
+                                    </div>
+                                    <div class="filter-container">
+                                        <label for="radarFilter">Subsystem:</label>
+                                        <select id="radarFilter" class="select-input">
+                                            <option value="aggregate">All Subsystems (Aggregate)</option>
+                                            <option value="all">All Metrics (Detailed)</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="canvas-wrapper">
-                            <canvas id="radarChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Metrics Table with Search & Filter -->
-                <div class="metrics-card card">
-                    <div class="table-card-header">
-                        <div>
-                            <h2 id="metricsTableTitle">Benchmark Metrics</h2>
-                            <span class="table-subtitle" id="metricsCountBadge">0 metrics</span>
-                        </div>
-                        <div class="table-actions">
-                            <div class="search-box">
-                                <span class="material-icons-round search-icon">search</span>
-                                <input type="text" id="metricSearchInput" placeholder="Filter metrics or subsystems..." class="search-input">
-                                <button id="clearSearchBtn" class="clear-search hidden"><span class="material-icons-round">close</span></button>
+                            <div class="canvas-wrapper">
+                                <canvas id="radarChart"></canvas>
                             </div>
-                            <select id="subsystemFilterSelect" class="select-input">
-                                <option value="all">All Subsystems</option>
-                            </select>
                         </div>
-                    </div>
-                    <div class="subsystem-chips" id="subsystemChipsContainer">
-                        <!-- Populated dynamically -->
-                    </div>
-                    <div class="table-container">
-                        <table id="metricsTable">
-                            <thead>
-                                <tr id="metricsTableHeader">
-                                    <th class="sortable" data-sort="subsystem">Subsystem <span class="sort-icon material-icons-round">sort</span></th>
-                                    <th class="sortable" data-sort="metric">Metric <span class="sort-icon material-icons-round">sort</span></th>
-                                    <th id="colValActive" class="sortable" data-sort="active">Value <span class="sort-icon material-icons-round">sort</span></th>
-                                    <th id="colValBaseline" class="hidden sortable" data-sort="baseline">Baseline <span class="sort-icon material-icons-round">sort</span></th>
-                                    <th>Unit</th>
-                                    <th id="colDelta" class="hidden sortable" data-sort="delta">Delta <span class="sort-icon material-icons-round">sort</span></th>
-                                </tr>
-                            </thead>
-                            <tbody id="metricsBody">
-                                <!-- Populated by JS -->
-                            </tbody>
-                        </table>
                     </div>
                 </div>
 
-                <!-- Heuristics / Advice -->
-                <div class="heuristics-container" id="heuristicsContainer">
-                    <div class="heuristic-card card" id="adviceActiveCard">
-                        <h2 id="adviceActiveTitle"><span class="material-icons-round">lightbulb</span> Current Advice</h2>
-                        <ul id="heuristicsActiveList" class="heuristic-list"></ul>
+                <!-- Metrics Tab -->
+                <div class="tab-panel hidden" id="tabMetrics">
+                    <!-- Metrics Table with Search & Filter -->
+                    <div class="metrics-card card">
+                        <div class="table-card-header">
+                            <div>
+                                <h2 id="metricsTableTitle">Benchmark Metrics</h2>
+                                <span class="table-subtitle" id="metricsCountBadge">0 metrics</span>
+                            </div>
+                            <div class="table-actions">
+                                <div class="search-box">
+                                    <span class="material-icons-round search-icon">search</span>
+                                    <input type="text" id="metricSearchInput" placeholder="Filter metrics or subsystems..." class="search-input">
+                                    <button id="clearSearchBtn" class="clear-search hidden"><span class="material-icons-round">close</span></button>
+                                </div>
+                                <select id="subsystemFilterSelect" class="select-input">
+                                    <option value="all">All Subsystems</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="subsystem-chips" id="subsystemChipsContainer">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <div class="table-container">
+                            <table id="metricsTable">
+                                <thead>
+                                    <tr id="metricsTableHeader">
+                                        <th class="sortable" data-sort="subsystem">Subsystem <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th class="sortable" data-sort="metric">Metric <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th id="colValActive" class="sortable" data-sort="active">Value <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th id="colValBaseline" class="hidden sortable" data-sort="baseline">Baseline <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th>Unit</th>
+                                        <th id="colDelta" class="hidden sortable" data-sort="delta">Delta <span class="sort-icon material-icons-round">sort</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="metricsBody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="heuristic-card card hidden" id="adviceBaselineCard">
-                        <h2><span class="material-icons-round">lightbulb</span> Baseline Advice</h2>
-                        <ul id="heuristicsBaselineList" class="heuristic-list"></ul>
+                </div>
+
+                <!-- Advice Tab -->
+                <div class="tab-panel hidden" id="tabAdvice">
+                    <!-- Heuristics / Advice -->
+                    <div class="heuristics-container" id="heuristicsContainer">
+                        <div class="heuristic-card card" id="adviceActiveCard">
+                            <h2 id="adviceActiveTitle"><span class="material-icons-round">lightbulb</span> Current Advice</h2>
+                            <ul id="heuristicsActiveList" class="heuristic-list"></ul>
+                        </div>
+                        <div class="heuristic-card card hidden" id="adviceBaselineCard">
+                            <h2><span class="material-icons-round">lightbulb</span> Baseline Advice</h2>
+                            <ul id="heuristicsBaselineList" class="heuristic-list"></ul>
+                        </div>
                     </div>
                 </div>
 

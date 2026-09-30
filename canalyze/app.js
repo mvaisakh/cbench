@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeRun = null;
     let comparisonRun = null;
     let parsedMetrics = [];
+    let currentTab = 'tabOverview';
 
     // Helper: Determine if metric improvement is positive or negative change
     function isHigherBetter(unit) {
@@ -223,6 +224,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Tab Management
+    function switchTab(tabId) {
+        currentTab = tabId;
+        
+        // Update nav buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.getAttribute('data-tab') === tabId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Show active panel
+        document.querySelectorAll('.tab-panel').forEach(panel => {
+            if (panel.id === tabId) {
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        });
+        
+        // Redraw chart if switching to charts tab (since canvas dimensions might be wonky when hidden)
+        if (tabId === 'tabCharts' && radarChartInstance) {
+            radarChartInstance.resize();
+        }
+    }
+
     // UI State Toggles
     function showLanding() {
         landingSection.classList.remove('hidden');
@@ -240,6 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
             comparisonRun = null;
             landingSection.classList.add('hidden');
             dashboardSection.classList.remove('hidden');
+            
+            // Reset to Overview tab
+            switchTab('tabOverview');
             
             updateActiveSidebarClasses();
             populateComparisonSelector();
@@ -1354,6 +1386,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm("Reset analyzer? This will deselect the active run and return to the home screen. History will NOT be deleted.")) {
                 showLanding();
             }
+        });
+
+        // Tab Navigation
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabId = e.currentTarget.getAttribute('data-tab');
+                switchTab(tabId);
+            });
         });
 
         // Export Dropdown menu toggle
