@@ -72,6 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartTypeBarBtn = document.getElementById('chartTypeBarBtn');
     let radarChartInstance = null;
     let currentChartType = 'radar'; // 'radar' or 'bar'
+    let renderedChartType = null;
+    let renderedComparisonMode = null;
     
     // Metrics Table & Search/Filter
     const metricsTableTitle = document.getElementById('metricsTableTitle');
@@ -929,29 +931,31 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const fragment = document.createDocumentFragment();
+
         filtered.forEach(m => {
+            const tr = document.createElement('tr');
             if (comparisonRun) {
-                metricsBody.innerHTML += `
-                    <tr>
-                        <td><strong>${m.subsystem}</strong></td>
-                        <td>${m.metric}</td>
-                        <td>${m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
-                        <td class="delta-neutral">${m.valB !== null ? m.valB.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
-                        <td>${m.unit}</td>
-                        <td class="${m.deltaClass}">${m.deltaStr}</td>
-                    </tr>
+                tr.innerHTML = `
+                    <td><strong>${m.subsystem}</strong></td>
+                    <td>${m.metric}</td>
+                    <td>${m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                    <td class="delta-neutral">${m.valB !== null ? m.valB.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                    <td>${m.unit}</td>
+                    <td class="${m.deltaClass}">${m.deltaStr}</td>
                 `;
             } else {
-                metricsBody.innerHTML += `
-                    <tr>
-                        <td><strong>${m.subsystem}</strong></td>
-                        <td>${m.metric}</td>
-                        <td>${m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
-                        <td>${m.unit}</td>
-                    </tr>
+                tr.innerHTML = `
+                    <td><strong>${m.subsystem}</strong></td>
+                    <td>${m.metric}</td>
+                    <td>${m.valA !== null ? m.valA.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                    <td>${m.unit}</td>
                 `;
             }
+            fragment.appendChild(tr);
         });
+
+        metricsBody.appendChild(fragment);
 
         // Update sort icons on header
         const headers = document.querySelectorAll('#metricsTableHeader th.sortable');
@@ -1048,11 +1052,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        const isComparing = !!comparisonRun;
+        const chartTypeChanged = (renderedChartType !== currentChartType) || (renderedComparisonMode !== isComparing);
+
+        if (radarChartInstance && !chartTypeChanged) {
+            radarChartInstance.data.labels = labels;
+            if (isComparing) {
+                radarChartInstance.data.datasets[0].label = `${comparisonRun.name} (Baseline = 100%)`;
+                radarChartInstance.data.datasets[0].data = dataSeriesB;
+                radarChartInstance.data.datasets[1].label = `${activeRun.name} (Relative ${currentChartType === 'radar' ? 'Performance' : '%'})`;
+                radarChartInstance.data.datasets[1].data = dataSeriesA;
+            } else {
+                radarChartInstance.data.datasets[0].label = `${activeRun.name} (Raw Metrics)`;
+                radarChartInstance.data.datasets[0].data = dataSeriesA;
+            }
+            radarChartInstance.update();
+            return;
+        }
+
         // Destroy previous instance
         if (radarChartInstance) {
             radarChartInstance.destroy();
             radarChartInstance = null;
         }
+
+        renderedChartType = currentChartType;
+        renderedComparisonMode = isComparing;
 
         const ctx = document.getElementById('radarChart').getContext('2d');
 
@@ -1452,13 +1477,22 @@ document.addEventListener('DOMContentLoaded', () => {
             updateChart();
         });
 
+        // Debounce utility
+        function debounce(fn, delay) {
+            let timer;
+            return function(...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
         // Search and filter in metrics table
-        metricSearchInput.addEventListener('input', (e) => {
+        metricSearchInput.addEventListener('input', debounce((e) => {
             searchQuery = e.target.value;
             if (searchQuery) clearSearchBtn.classList.remove('hidden');
             else clearSearchBtn.classList.add('hidden');
             renderMetricsTable();
-        });
+        }, 150));
 
         clearSearchBtn.addEventListener('click', () => {
             metricSearchInput.value = '';
