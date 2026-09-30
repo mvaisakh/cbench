@@ -15,6 +15,12 @@ enum heuristic_severity {
 void report_init(void);
 void report_set_metadata(int duration_sec, int threads);
 void report_add_sysinfo(const char *key, const char *value);
+void report_start_benchmark_timer(void);
+void report_stop_benchmark_timer(void);
+void report_add_metric_stats(const char *subsystem, const char *metric, double mean, double stddev, double min, double max, int iterations, const char *unit);
+void report_begin_iteration(void);
+void report_end_iteration(void);
+void report_process_iterations(int iterations);
 void report_add_metric(const char *subsystem, const char *metric, double value, const char *unit);
 void report_add_heuristic(const char *subsystem, const char *message);
 void report_add_heuristic_severity(const char *subsystem, const char *message, enum heuristic_severity severity);

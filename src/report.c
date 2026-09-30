@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Project Cerium
 
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -22,6 +23,11 @@ struct metric_entry {
     char name[64];
     double value;
     char unit[16];
+    double elapsed_ms;
+    double stddev;
+    double min;
+    double max;
+    int iterations;
 };
 
 struct heuristic_entry {
@@ -38,6 +44,11 @@ static int metric_count = 0;
 
 static struct heuristic_entry heuristics[MAX_HEURISTICS];
 static int heuristic_count = 0;
+
+static struct timespec bench_start_time;
+static double last_bench_elapsed_ms = 0.0;
+static int iteration_start_count = 0;
+
 
 static int meta_duration_sec = 10;
 static int meta_threads = 1;
@@ -64,6 +75,73 @@ void report_add_sysinfo(const char *key, const char *value) {
     sysinfo_count++;
 }
 
+
+void report_start_benchmark_timer(void) {
+    clock_gettime(CLOCK_MONOTONIC, &bench_start_time);
+}
+
+void report_stop_benchmark_timer(void) {
+    struct timespec bench_end_time;
+    clock_gettime(CLOCK_MONOTONIC, &bench_end_time);
+    last_bench_elapsed_ms = (bench_end_time.tv_sec - bench_start_time.tv_sec) * 1000.0 +
+                            (bench_end_time.tv_nsec - bench_start_time.tv_nsec) / 1000000.0;
+}
+
+void report_begin_iteration(void) {
+    iteration_start_count = metric_count;
+}
+
+void report_end_iteration(void) {
+    // Only needed to keep track of where iteration started
+}
+
+
+void report_process_iterations(int iterations) {
+    if (iterations <= 1) return;
+    int added = metric_count - iteration_start_count;
+    if (added == 0 || added % iterations != 0) return; // something went wrong
+    int m = added / iterations;
+    
+    for (int i = 0; i < m; i++) {
+        double sum = 0, sq_sum = 0, min_val = -1, max_val = -1;
+        int first = iteration_start_count + i;
+        for (int j = 0; j < iterations; j++) {
+            double val = metrics[iteration_start_count + j * m + i].value;
+            sum += val;
+            sq_sum += val * val;
+            if (j == 0 || val < min_val) min_val = val;
+            if (j == 0 || val > max_val) max_val = val;
+        }
+        double mean = sum / iterations;
+        double variance = (sq_sum / iterations) - (mean * mean);
+        double stddev = variance > 0 ? sqrt(variance) : 0.0;
+        
+        // Overwrite the first iteration's entry with aggregated stats
+        metrics[first].value = mean;
+        metrics[first].stddev = stddev;
+        metrics[first].min = min_val;
+        metrics[first].max = max_val;
+        metrics[first].iterations = iterations;
+    }
+    // reset metric_count to drop the extra iterations
+    metric_count = iteration_start_count + m;
+}
+void report_add_metric_stats(const char *subsystem, const char *metric, double mean, double stddev, double min, double max, int iterations, const char *unit) {
+    if (metric_count >= MAX_METRICS) return;
+    strncpy(metrics[metric_count].subsystem, subsystem, 31);
+    metrics[metric_count].subsystem[31] = '\0';
+    strncpy(metrics[metric_count].name, metric, 63);
+    metrics[metric_count].name[63] = '\0';
+    metrics[metric_count].value = mean;
+    strncpy(metrics[metric_count].unit, unit, 15);
+    metrics[metric_count].unit[15] = '\0';
+    metrics[metric_count].elapsed_ms = last_bench_elapsed_ms;
+    metrics[metric_count].stddev = stddev;
+    metrics[metric_count].min = min;
+    metrics[metric_count].max = max;
+    metrics[metric_count].iterations = iterations;
+    metric_count++;
+}
 void report_add_metric(const char *subsystem, const char *metric, double value, const char *unit) {
     if (metric_count >= MAX_METRICS) return;
     strncpy(metrics[metric_count].subsystem, subsystem, 31);
@@ -149,7 +227,17 @@ static void format_json_report(FILE *stream) {
         fprintf(stream, "      \"subsystem\": \"%s\",\n", metrics[i].subsystem);
         fprintf(stream, "      \"metric\": \"%s\",\n", metrics[i].name);
         fprintf(stream, "      \"value\": %.4f,\n", metrics[i].value);
-        fprintf(stream, "      \"unit\": \"%s\"\n", metrics[i].unit);
+        fprintf(stream, "      \"unit\": \"%s\",\n", metrics[i].unit);
+        fprintf(stream, "      \"elapsed_ms\": %.4f", metrics[i].elapsed_ms);
+        if (metrics[i].iterations > 1) {
+            fprintf(stream, ",\n");
+            fprintf(stream, "      \"iterations\": %d,\n", metrics[i].iterations);
+            fprintf(stream, "      \"stddev\": %.4f,\n", metrics[i].stddev);
+            fprintf(stream, "      \"min\": %.4f,\n", metrics[i].min);
+            fprintf(stream, "      \"max\": %.4f\n", metrics[i].max);
+        } else {
+            fprintf(stream, "\n");
+        }
         fprintf(stream, "    }%s\n", (i == metric_count - 1) ? "" : ",");
     }
     fprintf(stream, "  ],\n");
@@ -192,11 +280,19 @@ void report_print_summary(void) {
     printf(" Duration: %d sec/test | Threads: %d | Total Metrics: %d\n",
            meta_duration_sec, meta_threads, metric_count);
     printf("--------------------------------------------------------------------------------\n");
-    printf(" %-12s | %-32s | %14s | %-10s\n", "SUBSYSTEM", "METRIC", "VALUE", "UNIT");
+    printf(" %-12s | %-26s | %10s | %10s | %8s | %-8s\n", "SUBSYSTEM", "METRIC", "VALUE", "ELAPSED(ms)", "STDDEV", "UNIT");
     printf("--------------------------------------------------------------------------------\n");
     for (int i = 0; i < metric_count; i++) {
-        printf(" %-12s | %-32s | %14.2f | %-10s\n",
-               metrics[i].subsystem, metrics[i].name, metrics[i].value, metrics[i].unit);
+        char val_str[32];
+        snprintf(val_str, sizeof(val_str), "%.2f", metrics[i].value);
+        char el_str[32];
+        snprintf(el_str, sizeof(el_str), "%.2f", metrics[i].elapsed_ms);
+        char std_str[32] = "";
+        if (metrics[i].iterations > 1) {
+            snprintf(std_str, sizeof(std_str), "%.2f", metrics[i].stddev);
+        }
+        printf(" %-12s | %-26s | %10s | %10s | %8s | %-8s\n",
+               metrics[i].subsystem, metrics[i].name, val_str, el_str, std_str, metrics[i].unit);
     }
     printf("================================================================================\n");
 

@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Project Cerium
 
 #include <stdio.h>
+#include <math.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include <signal.h>
@@ -27,6 +29,8 @@
 #include "topology.h"
 
 int num_threads = 0;
+int repeat_count = 1;
+
 int benchmark_duration_sec = 10;
 
 static void print_usage(const char *prog) {
@@ -56,6 +60,8 @@ static void print_usage(const char *prog) {
 
 int main(int argc, char **argv)
 {
+    int failures = 0;
+    int total_runs = 0;
     int opt;
     int run_all = 0, run_syscall = 0, run_sched = 0, run_mem = 0, run_io = 0;
     int run_rng = 0, run_net = 0, run_futex = 0, run_crypto = 0, run_zero = 0;
@@ -63,9 +69,10 @@ int main(int argc, char **argv)
     int output_json = 0;
     char *output_file = NULL;
 
-    while ((opt = getopt(argc, argv, "ad:t:o:sSmijrnfczuNqZEh")) != -1) {
+    while ((opt = getopt(argc, argv, "ad:t:o:R:sSmijrnfczuNqZEh")) != -1) {
         switch (opt) {
             case 'a': run_all = 1; break;
+            case 'R': repeat_count = atoi(optarg); break;
             case 'd': benchmark_duration_sec = atoi(optarg); break;
             case 't': num_threads = atoi(optarg); break;
             case 'o': output_file = optarg; break;
@@ -106,6 +113,11 @@ int main(int argc, char **argv)
         benchmark_duration_sec = 10;
     }
 
+    if (geteuid() != 0) {
+        pr_warn("cbench must be run as root. Some benchmarks may fail.\n");
+        return CBENCH_EXIT_PERMISSION;
+    }
+    
     signal(SIGPIPE, SIG_IGN);
 
     report_init();
@@ -122,86 +134,212 @@ int main(int argc, char **argv)
     if (run_syscall) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_syscall_benchmark();
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            if (run_syscall_benchmark() != 0) local_fails++;
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("syscall");
     }
     if (run_sched) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_sched_benchmark();
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            if (run_sched_benchmark() != 0) local_fails++;
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("sched");
     }
     if (run_mem) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_mem_benchmark();
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            if (run_mem_benchmark() != 0) local_fails++;
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("mem");
     }
     if (run_io) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_io_benchmark();
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            if (run_io_benchmark() != 0) local_fails++;
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("io");
     }
     if (run_rng) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_rng_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_rng_benchmark(num_threads, benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("rng");
     }
     if (run_net) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_net_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_net_benchmark(num_threads, benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("net");
     }
     if (run_futex) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_futex_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_futex_benchmark(num_threads, benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("futex");
     }
     if (run_crypto) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_crypto_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_crypto_benchmark(num_threads, benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("crypto");
     }
     if (run_zero) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_zero_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_zero_benchmark(num_threads, benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("zero");
     }
     
     if (run_rcu) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_rcu_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            if (run_rcu_benchmark(num_threads, benchmark_duration_sec) != 0) local_fails++;
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("rcu");
     }
     if (run_neon) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_neon_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_neon_benchmark(num_threads, benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("neon");
     }
     if (run_sqlite) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_sqlite_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_sqlite_benchmark(num_threads, benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("sqlite");
     }
     if (run_zram) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_zram_benchmark(num_threads, benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_zram_benchmark(num_threads, benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("zram");
     }
     if (run_eas) {
         pr_info("\n================================================================================\n");
         telemetry_start();
-        run_eas_benchmark(benchmark_duration_sec);
+        report_begin_iteration();
+        int local_fails = 0;
+        for (int i = 0; i < repeat_count; i++) {
+            report_start_benchmark_timer();
+            run_eas_benchmark(benchmark_duration_sec);
+            report_stop_benchmark_timer();
+        }
+        report_process_iterations(repeat_count);
+        if (local_fails > 0) failures++;
+        total_runs++;
         telemetry_stop("eas");
     }
 
@@ -220,5 +358,7 @@ int main(int argc, char **argv)
 
     telemetry_deinit();
 
-    return 0;
+    if (failures == 0) return CBENCH_EXIT_SUCCESS;
+    else if (failures < total_runs) return CBENCH_EXIT_PARTIAL;
+    else return CBENCH_EXIT_ERROR;
 }
