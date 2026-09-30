@@ -1,0 +1,37 @@
+name: Validate CAnalyze
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'canalyze/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'canalyze/**'
+
+jobs:
+  validate:
+    name: HTML & CSS Validation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Validate HTML
+      uses: Cyb3r-Jak3/html5validator-action@v7.2.0
+      with:
+        root: canalyze/
+        css: true
+
+    - name: Check for broken links
+      run: |
+        # Ensure all local script/style references exist
+        cd canalyze
+        for ref in $(grep -oP 'src="\K[^"]+' index.html) $(grep -oP 'href="\K[^"]+(?!http)' index.html | grep -v 'http'); do
+          if [ ! -f "$ref" ] && [ ! -d "$ref" ]; then
+            echo "ERROR: Missing referenced file: $ref"
+            exit 1
+          fi
+        done
+        echo "All local references valid."

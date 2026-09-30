@@ -1,0 +1,56 @@
+name: Performance Regression Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_artifact:
+        description: 'Name of the baseline artifact to compare against'
+        required: false
+        default: 'baseline-results'
+      threshold:
+        description: 'Maximum allowed regression percentage'
+        required: false
+        default: '5'
+
+jobs:
+  gate:
+    name: Check for Regressions
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Download Baseline Results
+      id: download
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.baseline_artifact }}
+        path: baseline/
+      continue-on-error: true
+
+    - name: Compare Results
+      if: steps.download.outcome == 'success'
+      run: |
+        THRESHOLD=${{ inputs.threshold }}
+        echo "Regression threshold: ${THRESHOLD}%"
+        echo ""
+        echo "This is a template workflow. To use it:"
+        echo "1. Run cbench on your CI runner and save results as an artifact"
+        echo "2. Upload a baseline JSON file as the 'baseline-results' artifact"
+        echo "3. Implement comparison logic below using jq or a custom script"
+        echo ""
+        echo "Example comparison (requires jq):"
+        echo "  jq -r '.metrics[] | [.subsystem, .metric, .value] | @tsv' baseline/results.json"
+        echo ""
+        # Placeholder: implement actual regression detection here
+        # For each metric in current results:
+        #   current=$(jq -r ".metrics[] | select(.metric==\"$name\") | .value" current.json)
+        #   baseline=$(jq -r ".metrics[] | select(.metric==\"$name\") | .value" baseline/results.json)
+        #   delta=$(echo "scale=2; ($current - $baseline) / $baseline * 100" | bc)
+        #   if [ delta < -$THRESHOLD ]; then exit 1; fi
+
+    - name: No Baseline Found
+      if: steps.download.outcome != 'success'
+      run: |
+        echo "No baseline artifact found. Skipping regression check."
+        echo "Upload a baseline artifact named '${{ inputs.baseline_artifact }}' to enable regression gating."
