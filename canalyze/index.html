@@ -18,21 +18,24 @@
             <h1 class="app-title">CAnalyze <span class="badge">BETA</span></h1>
         </div>
         <div class="actions">
+            <button id="themeToggleBtn" class="btn btn-icon" title="Toggle Theme">
+                <span class="material-icons-round">light_mode</span>
+            </button>
             <button id="importBtn" class="btn btn-secondary" title="Upload New Run">
                 <span class="material-icons-round">upload_file</span> Import Run
             </button>
             <div class="export-dropdown">
-                <button id="exportMenuBtn" class="btn btn-secondary" title="Export Reports">
+                <button id="exportMenuBtn" class="btn btn-secondary" title="Export Reports" aria-haspopup="menu" aria-expanded="false">
                     <span class="material-icons-round">download</span> Export <span class="material-icons-round" style="font-size: 16px;">expand_more</span>
                 </button>
-                <div id="exportMenu" class="export-dropdown-content hidden">
-                    <button id="exportMarkdownBtn" class="export-item">
+                <div id="exportMenu" class="export-dropdown-content hidden" role="menu">
+                    <button id="exportMarkdownBtn" class="export-item" role="menuitem">
                         <span class="material-icons-round">description</span> Export Markdown Report
                     </button>
-                    <button id="exportCsvBtn" class="export-item">
+                    <button id="exportCsvBtn" class="export-item" role="menuitem">
                         <span class="material-icons-round">table_chart</span> Export Metrics CSV
                     </button>
-                    <button id="exportJsonBtn" class="export-item">
+                    <button id="exportJsonBtn" class="export-item" role="menuitem">
                         <span class="material-icons-round">data_object</span> Export Run JSON
                     </button>
                 </div>
@@ -258,12 +261,12 @@
                             <table id="metricsTable">
                                 <thead>
                                     <tr id="metricsTableHeader">
-                                        <th class="sortable" data-sort="subsystem">Subsystem <span class="sort-icon material-icons-round">sort</span></th>
-                                        <th class="sortable" data-sort="metric">Metric <span class="sort-icon material-icons-round">sort</span></th>
-                                        <th id="colValActive" class="sortable" data-sort="active">Value <span class="sort-icon material-icons-round">sort</span></th>
-                                        <th id="colValBaseline" class="hidden sortable" data-sort="baseline">Baseline <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th class="sortable" data-sort="subsystem" tabindex="0" role="button">Subsystem <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th class="sortable" data-sort="metric" tabindex="0" role="button">Metric <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th id="colValActive" class="sortable" data-sort="active" tabindex="0" role="button">Value <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th id="colValBaseline" class="hidden sortable" data-sort="baseline" tabindex="0" role="button">Baseline <span class="sort-icon material-icons-round">sort</span></th>
                                         <th>Unit</th>
-                                        <th id="colDelta" class="hidden sortable" data-sort="delta">Delta <span class="sort-icon material-icons-round">sort</span></th>
+                                        <th id="colDelta" class="hidden sortable" data-sort="delta" tabindex="0" role="button">Delta <span class="sort-icon material-icons-round">sort</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="metricsBody">
@@ -271,6 +274,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div id="metricsAnnounce" class="sr-only" aria-live="polite" aria-atomic="true"></div>
                     </div>
                 </div>
 
@@ -290,7 +294,7 @@
                 </div>
 
                 <!-- Export Modal Dialog -->
-                <div id="exportModal" class="modal hidden">
+                <div id="exportModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDescription">
                     <div class="modal-backdrop" id="modalBackdrop"></div>
                     <div class="modal-content card">
                         <div class="modal-header">

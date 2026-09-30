@@ -1,5 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    let currentTheme = localStorage.getItem('canalyze_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    themeToggleBtn.querySelector('.material-icons-round').textContent = 
+        currentTheme === 'dark' ? 'light_mode' : 'dark_mode';
+
     const landingSection = document.getElementById('landingSection');
     const dashboardSection = document.getElementById('dashboardSection');
     const mainDropZone = document.getElementById('mainDropZone');
@@ -111,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let comparisonRun = null;
     let parsedMetrics = [];
     let currentTab = 'tabOverview';
+    let previousFocusElement = null;
 
     // Helper: Determine if metric improvement is positive or negative change
     function isHigherBetter(unit) {
@@ -761,12 +768,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update chips
         subsystemChipsContainer.innerHTML = `
-            <button class="filter-chip ${selectedSubsystemFilter === 'all' ? 'active' : ''}" data-sub="all">All</button>
+            <button class="filter-chip ${selectedSubsystemFilter === 'all' ? 'active' : ''}" data-sub="all" aria-pressed="${selectedSubsystemFilter === 'all' ? 'true' : 'false'}">All</button>
         `;
         sortedSubsystems.forEach(sub => {
             const chip = document.createElement('button');
             chip.className = `filter-chip ${selectedSubsystemFilter === sub ? 'active' : ''}`;
             chip.setAttribute('data-sub', sub);
+            chip.setAttribute('aria-pressed', selectedSubsystemFilter === sub ? 'true' : 'false');
             chip.textContent = sub;
             subsystemChipsContainer.appendChild(chip);
         });
@@ -964,8 +972,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const col = th.getAttribute('data-sort');
             if (col === sortColumn) {
                 th.classList.add(sortAscending ? 'sorted-asc' : 'sorted-desc');
+                th.setAttribute('aria-sort', sortAscending ? 'ascending' : 'descending');
+            } else {
+                th.setAttribute('aria-sort', 'none');
             }
         });
+
+        const announce = document.getElementById('metricsAnnounce');
+        if (announce) {
+            announce.textContent = `Showing ${filtered.length} of ${parsedMetrics.length} metrics, sorted by ${sortColumn} ${sortAscending ? 'ascending' : 'descending'}.`;
+        }
+    }
+
+    function getChartTextColor() {
+        return currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+    }
+    function getChartGridColor() {
+        return currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
     }
 
     // Unified Chart Rendering (Radar or Bar; Comparison or Single Run)
@@ -1114,10 +1137,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         animation: { duration: 600, easing: 'easeOutQuart' },
                         scales: {
                             r: {
-                                angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
-                                grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                                angleLines: { color: getChartGridColor() },
+                                grid: { color: getChartGridColor() },
                                 pointLabels: {
-                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    color: getChartTextColor(),
                                     font: { family: 'Inter', size: 10, weight: '500' }
                                 },
                                 ticks: { display: false }
@@ -1125,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         },
                         plugins: {
                             legend: {
-                                labels: { color: 'rgba(255, 255, 255, 0.9)', font: { family: 'Inter', size: 12, weight: '500' } }
+                                labels: { color: getChartTextColor(), font: { family: 'Inter', size: 12, weight: '500' } }
                             },
                             tooltip: {
                                 backgroundColor: 'rgba(30, 30, 30, 0.95)',
@@ -1179,20 +1202,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         animation: { duration: 600, easing: 'easeOutQuart' },
                         scales: {
                             x: {
-                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                                ticks: { color: 'rgba(255, 255, 255, 0.7)', font: { family: 'Inter', size: 10 } }
+                                grid: { color: getChartGridColor() },
+                                ticks: { color: getChartTextColor(), font: { family: 'Inter', size: 10 } }
                             },
                             y: {
-                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                grid: { color: getChartGridColor() },
                                 ticks: {
-                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    color: getChartTextColor(),
                                     callback: function(v) { return v + '%'; }
                                 }
                             }
                         },
                         plugins: {
                             legend: {
-                                labels: { color: 'rgba(255, 255, 255, 0.9)', font: { family: 'Inter', size: 12, weight: '500' } }
+                                labels: { color: getChartTextColor(), font: { family: 'Inter', size: 12, weight: '500' } }
                             }
                         }
                     }
@@ -1220,17 +1243,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     maintainAspectRatio: false,
                     scales: {
                         x: {
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { color: 'rgba(255, 255, 255, 0.7)', font: { family: 'Inter', size: 10 } }
+                            grid: { color: getChartGridColor() },
+                            ticks: { color: getChartTextColor(), font: { family: 'Inter', size: 10 } }
                         },
                         y: {
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+                            grid: { color: getChartGridColor() },
+                            ticks: { color: getChartTextColor() }
                         }
                     },
                     plugins: {
                         legend: {
-                            labels: { color: 'rgba(255, 255, 255, 0.9)' }
+                            labels: { color: getChartTextColor() }
                         }
                     }
                 }
@@ -1331,6 +1354,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show Export Modal
     function showExportModal(title, description, content, filename, mimeType) {
+        previousFocusElement = document.activeElement;
         modalTitle.textContent = title;
         modalDescription.textContent = description;
         modalTextarea.value = content;
@@ -1339,10 +1363,13 @@ document.addEventListener('DOMContentLoaded', () => {
         activeExportMime = mimeType;
         exportModal.classList.remove('hidden');
         exportMenu.classList.add('hidden');
+        exportMenuBtn.setAttribute('aria-expanded', 'false');
+        modalTextarea.focus();
     }
 
     function closeExportModal() {
         exportModal.classList.add('hidden');
+        if (previousFocusElement) previousFocusElement.focus();
     }
 
     function downloadActiveExportFile() {
@@ -1386,6 +1413,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set up Event Listeners
     function setupEventListeners() {
+        themeToggleBtn.addEventListener('click', () => {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('canalyze_theme', currentTheme);
+            themeToggleBtn.querySelector('.material-icons-round').textContent = 
+                currentTheme === 'dark' ? 'light_mode' : 'dark_mode';
+            // Re-render chart to update colors
+            if (activeRun) updateChart();
+        });
+
         // Drag & Drop
         mainDropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
