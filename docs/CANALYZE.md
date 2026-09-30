@@ -4,13 +4,17 @@
 
 ## Features
 - **100% Offline & Zero CDNs**: CAnalyze runs completely locally using bundled libraries (`chart.min.js`).
+- **Tabbed Dashboard Architecture**: Fast, decluttered navigation organized across **Overview**, **Charts**, **Metrics**, and **Advice** tabs.
+- **Light & Dark Theme Toggle**: Built-in Material Design 3 theme switcher with instant canvas chart adaptation and `localStorage` persistence.
 - **Single-Run & Comparison Modes**: Inspect standalone benchmark metrics or compare two runs side-by-side.
 - **Hardware Telemetry & Vital Signs**: Automatically extracts and highlights peak thermal metrics, hardware IPC, L1D cache miss rates, branch mispredictions, CPU frequencies, and energy efficiency.
-- **Interactive Visualizations**: Toggle between Performance Radar view and Grouped Relative Bar charts with subsystem aggregation or fine-grained detailed filtering.
-- **Search, Filter & Sort**: Instantly search metrics, filter by subsystem chips, and sort columns by value or delta.
-- **Automated Deltas & Severity Heuristics**: Color-coded improvements (green) and regressions (red), paired with categorized kernel patch advice (Critical, Warning, Optimization).
-- **1-Click Reporting & Export**:
-  - **Export Markdown Report**: Generates a clean, copy-paste-ready report formatted for GitHub pull requests and kernel mailing list patches.
+- **Interactive Visualizations**: Toggle between Performance Radar view, Grouped Relative Bar charts, and multi-run **Historical Trend Lines** across chronological benchmark history.
+- **Search, Filter & Sort**: Instantly search metrics with debounced querying, filter by clickable subsystem chips, and sort columns by value or delta.
+- **Inline Sparklines**: Mini progress indicators embedded directly into comparison value cells.
+- **Interactive Kernel Heuristics**: Click-to-highlight deep links that jump from advice alerts straight to corresponding telemetry vital cards.
+- **Automated Deltas & Severity Heuristics**: Color-coded improvements (green) and regressions (red), paired with categorized kernel patch advice (Critical, Warning, Info).
+- **1-Click Reporting & Export Suite**:
+  - **Export Markdown Report**: Generates a clean, copy-paste-ready report formatted for GitHub pull requests with raw/rendered live preview toggle.
   - **Export CSV**: Export all aligned metrics for spreadsheet analysis.
   - **Export JSON**: Download raw benchmark run telemetry.
 
