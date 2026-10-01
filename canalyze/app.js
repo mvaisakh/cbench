@@ -1841,9 +1841,9 @@ document.addEventListener('DOMContentLoaded', () => {
             renderMetricsTable();
         });
 
-        // Table Sorting Header clicks
+        // Table Sorting Header clicks & keyboard navigation
         document.querySelectorAll('#metricsTableHeader th.sortable').forEach(th => {
-            th.addEventListener('click', () => {
+            const triggerSort = () => {
                 const col = th.getAttribute('data-sort');
                 if (sortColumn === col) {
                     sortAscending = !sortAscending;
@@ -1852,6 +1852,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     sortAscending = true;
                 }
                 renderMetricsTable();
+            };
+
+            th.addEventListener('click', triggerSort);
+            th.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    triggerSort();
+                }
             });
         });
 
